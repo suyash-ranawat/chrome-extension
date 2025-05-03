@@ -1,0 +1,1 @@
+import{j as e,a as t,R as o}from"./client.js";const r=()=>e.jsx("div",{style:{padding:"1rem"},children:e.jsx("h1",{children:"Devtools: Search.com Tab"})});t.createRoot(document.getElementById("root")).render(e.jsx(o.StrictMode,{children:e.jsx(r,{})}));
