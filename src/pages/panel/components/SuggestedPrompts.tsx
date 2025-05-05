@@ -72,7 +72,6 @@ const SuggestedPrompts: React.FC<SuggestedPromptsProps> = ({ onPromptClick }) =>
             </div>
           </div>
           <div className="flex-1">
-            <div className="font-semibold">GPT-4o Mini</div>
             <div className="text-sm text-gray-600">Hello, how can I help you today?</div>
           </div>
         </div>

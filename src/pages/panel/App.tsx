@@ -5,6 +5,8 @@ import SideIcons from './components/SideIcons';
 import ChatArea from './components/ChatArea';
 import InputArea from './components/InputArea';
 import SuggestedPrompts from './components/SuggestedPrompts';
+import AuthWrapper from './components/auth/AuthWrapper';
+import Profile from './components/auth/Profile';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -18,6 +20,7 @@ const App: React.FC = () => {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [currentView, setCurrentView] = useState<'chat' | 'search' | 'write' | 'image' | 'file'>('chat');
+  const [showProfile, setShowProfile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Retrieve current chat ID from localStorage on component mount
@@ -74,6 +77,7 @@ const App: React.FC = () => {
     setCurrentChatId(undefined);
     localStorage.removeItem('currentChatId');
     setShowSuggestions(true);
+    setShowProfile(false);
   };
 
   const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file') => {
@@ -81,11 +85,28 @@ const App: React.FC = () => {
     // In a real app, you might want to perform different actions based on the selected view
   };
 
-  return (
-    <div className="flex h-screen bg-white">
-      <div className="flex-1 flex flex-col h-full">
-        <TopNavigation onNewConversation={handleNewConversation} />
-        
+  const handleSignOut = () => {
+    // This will be handled by the AuthWrapper
+    handleNewConversation();
+  };
+
+  const handleViewProfile = () => {
+    setShowProfile(true);
+  };
+
+  // Main content of the app - wrapped with authentication
+  const MainContent = () => {
+    if (showProfile) {
+      return (
+        <Profile 
+          onSignOut={handleSignOut} 
+          onUpdate={() => setShowProfile(false)}
+        />
+      );
+    }
+
+    return (
+      <>
         {showSuggestions && messages.length === 0 ? (
           <SuggestedPrompts onPromptClick={handlePromptClick} />
         ) : (
@@ -106,9 +127,23 @@ const App: React.FC = () => {
           }} 
           isLoading={isLoading} 
         />
+      </>
+    );
+  };
+
+  return (
+    <AuthWrapper>
+      <div className="flex-1 flex flex-col h-full">
+        <TopNavigation 
+          onNewConversation={handleNewConversation} 
+          onViewProfile={handleViewProfile}
+          onSignOut={handleSignOut}
+        />
+        
+        <MainContent />
       </div>
       <SideIcons currentView={currentView} onViewChange={changeView} />
-    </div>
+    </AuthWrapper>
   );
 };
 

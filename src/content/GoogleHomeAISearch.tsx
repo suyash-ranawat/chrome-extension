@@ -46,10 +46,9 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
   };
 
   const containerStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '1000px',
+    position: 'fixed',
+    top: '100px',
     right: '20px',
-    transform: 'translateX(-50%)',
     width: isExpanded ? '584px' : '350px',
     maxWidth: '90vw',
     backgroundColor: 'white',

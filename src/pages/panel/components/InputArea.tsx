@@ -34,7 +34,8 @@ const InputArea: React.FC<InputAreaProps> = ({ input, setInput, handleSubmit, is
             </button>
           </div>
         </div>
-        <div className="flex items-center justify-between mt-2 px-2">
+        {/* For future use */}
+        {/* <div className="flex items-center justify-between mt-2 px-2">
           <div className="flex items-center">
             <button 
               type="button" 
@@ -62,7 +63,7 @@ const InputArea: React.FC<InputAreaProps> = ({ input, setInput, handleSubmit, is
               </svg>
             </button>
           </div>
-        </div>
+        </div> */}
       </form>
       {/* For future use */}
       {/* <div className="mt-2 text-center">
