@@ -10,11 +10,12 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface SideIconsProps {
-  currentView: 'chat' | 'search' | 'write' | 'image' | 'file';
-  onViewChange: (view: 'chat' | 'search' | 'write' | 'image' | 'file') => void;
+  currentView: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth';
+  onViewChange: (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth') => void;
+  isAuthenticated: boolean;
 }
 
-const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange }) => {
+const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuthenticated }) => {
   const iconClasses = (view: string) => 
     `p-2 rounded ${currentView === view ? 'bg-gray-100' : 'hover:bg-gray-100'}`;
 
@@ -31,57 +32,19 @@ const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange }) => {
           </button>
           <span className="text-xs mt-1">Chat</span>
         </div>
-        {/* For future use */}
-        {/* <div className="flex flex-col items-center">
+        
+        {/* Auth button - shows Sign In or Profile based on auth state */}
+        <div className="flex flex-col items-center">
           <button 
-            className={iconClasses('ask')} 
-            title="Ask"
-            onClick={() => onViewChange('chat')} // Also uses chat view
+            className={iconClasses('auth')} 
+            title={isAuthenticated ? "Profile" : "Sign In"}
+            onClick={() => onViewChange('auth')}
           >
             <UserCircleIcon className="w-6 h-6" />
           </button>
-          <span className="text-xs mt-1">Ask</span>
+          <span className="text-xs mt-1">{isAuthenticated ? "Profile" : "Sign In"}</span>
         </div>
-        <div className="flex flex-col items-center">
-          <button 
-            className={iconClasses('search')} 
-            title="Search"
-            onClick={() => onViewChange('search')}
-          >
-            <MagnifyingGlassIcon className="w-6 h-6" />
-          </button>
-          <span className="text-xs mt-1">Search</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <button 
-            className={iconClasses('write')} 
-            title="Write"
-            onClick={() => onViewChange('write')}
-          >
-            <PencilSquareIcon className="w-6 h-6" />
-          </button>
-          <span className="text-xs mt-1">Write</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <button 
-            className={iconClasses('image')} 
-            title="Image"
-            onClick={() => onViewChange('image')}
-          >
-            <PhotoIcon className="w-6 h-6" />
-          </button>
-          <span className="text-xs mt-1">Image</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <button 
-            className={iconClasses('file')} 
-            title="ChatFile"
-            onClick={() => onViewChange('file')}
-          >
-            <PaperClipIcon className="w-6 h-6" />
-          </button>
-          <span className="text-xs mt-1">ChatFile</span>
-        </div> */}
+        
         <div className="flex flex-col items-center">
           <button 
             className="p-2 hover:bg-gray-100 rounded" 

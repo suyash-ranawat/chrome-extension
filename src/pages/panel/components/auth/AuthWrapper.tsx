@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+// src/pages/panel/components/auth/AuthWrapper.tsx
+
+import React, { useState, useEffect } from 'react';
 import useAuth from '@/hooks/useAuth';
 import SignIn from './SignIn';
 import SignUp from './SignUp';
@@ -17,22 +19,43 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     user, 
     isAuthenticated, 
     isLoading, 
+    error,
     signIn, 
     signUp, 
     signOut, 
     updateProfile,
     socialLogin,
-    phoneLogin
+    phoneLogin,
+    clearError
   } = useAuth();
   
   const [currentView, setCurrentView] = useState<AuthView>('main');
   const [phoneAuthSessionId, setPhoneAuthSessionId] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
+  
+  // Update view when authentication state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      setCurrentView('main');
+    } else if (!isLoading) {
+      setCurrentView('signin');
+    }
+  }, [isAuthenticated, isLoading]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('AuthWrapper state:', { 
+      isAuthenticated, 
+      isLoading, 
+      currentView,
+      hasUser: !!user,
+      error
+    });
+  }, [isAuthenticated, isLoading, currentView, user, error]);
 
   const handleSignIn = async (email: string, password: string) => {
     try {
       await signIn(email, password);
-      setCurrentView('main');
       return true;
     } catch (error) {
       console.error('Sign in failed:', error);
@@ -43,7 +66,6 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const handleSignUp = async (username: string, email: string, password: string) => {
     try {
       await signUp(username, email, password);
-      setCurrentView('main');
       return true;
     } catch (error) {
       console.error('Sign up failed:', error);
@@ -74,7 +96,6 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const handleSocialLogin = async (provider: SocialProvider) => {
     try {
       await socialLogin(provider);
-      setCurrentView('main');
       return true;
     } catch (error) {
       console.error(`${provider} login failed:`, error);
@@ -174,9 +195,15 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
               const success = await handleSignIn(email, password);
               return success;
             }}
-            onSwitchToSignUp={() => setCurrentView('signup')}
+            onSwitchToSignUp={() => {
+              clearError();
+              setCurrentView('signup');
+            }}
             onSocialLogin={handleSocialLogin}
-            onPhoneLogin={() => setCurrentView('phone')}
+            onPhoneLogin={() => {
+              clearError();
+              setCurrentView('phone');
+            }}
           />
         )}
         
@@ -186,9 +213,15 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
               const success = await handleSignUp(username, email, password);
               return success;
             }}
-            onSwitchToSignIn={() => setCurrentView('signin')}
+            onSwitchToSignIn={() => {
+              clearError();
+              setCurrentView('signin');
+            }}
             onSocialLogin={handleSocialLogin}
-            onPhoneLogin={() => setCurrentView('phone')}
+            onPhoneLogin={() => {
+              clearError();
+              setCurrentView('phone');
+            }}
           />
         )}
       </div>
