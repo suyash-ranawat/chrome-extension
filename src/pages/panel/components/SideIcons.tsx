@@ -10,8 +10,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface SideIconsProps {
-  currentView: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth';
-  onViewChange: (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth') => void;
+  currentView: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile';
+  onViewChange: (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile') => void;
   isAuthenticated: boolean;
 }
 
@@ -33,12 +33,12 @@ const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuth
           <span className="text-xs mt-1">Chat</span>
         </div>
         
-        {/* Auth button - shows Sign In or Profile based on auth state */}
+        {/* Auth/Profile button - shows Sign In or Profile based on auth state */}
         <div className="flex flex-col items-center">
           <button 
-            className={iconClasses('auth')} 
+            className={iconClasses(isAuthenticated ? 'profile' : 'auth')} 
             title={isAuthenticated ? "Profile" : "Sign In"}
-            onClick={() => onViewChange('auth')}
+            onClick={() => onViewChange(isAuthenticated ? 'profile' : 'auth')}
           >
             <UserCircleIcon className="w-6 h-6" />
           </button>

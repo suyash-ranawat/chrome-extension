@@ -1,15 +1,71 @@
-import React, { useState } from 'react';
-import { requestPhoneOTP, verifyPhoneOTP } from '@/services/socialAuth';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
 interface PhoneAuthProps {
-  onSuccess: () => void;
+  onRequestOTP: (phoneNumber: string) => Promise<string | null>;
+  onVerifyOTP: (otp: string) => Promise<boolean>;
   onCancel: () => void;
+  error: string | null;
 }
 
-const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onCancel }) => {
-  // ... previous part of the component ...
+const PhoneAuth: React.FC<PhoneAuthProps> = ({ 
+  onRequestOTP, 
+  onVerifyOTP, 
+  onCancel,
+  error
+}) => {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [stepOtp, setStepOtp] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  // Handle countdown for OTP resend
+  useEffect(() => {
+    if (countdown <= 0) return;
+    
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  // Request OTP handler
+  const handleRequestOTP = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    if (!phoneNumber) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const sessionId = await onRequestOTP(phoneNumber);
+      if (sessionId) {
+        setStepOtp(true);
+        setCountdown(60); // Start countdown for resend (60 seconds)
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Verify OTP handler
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!otp) return;
+    
+    setIsLoading(true);
+    
+    try {
+      await onVerifyOTP(otp);
+      // Success is handled by parent component
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Phone number input step
   if (!stepOtp) {

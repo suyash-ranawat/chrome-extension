@@ -8,7 +8,10 @@ import {
   signIn as apiSignIn, 
   signUp as apiSignUp,
   signOut as apiSignOut,
-  updateProfile as apiUpdateProfile
+  updateProfile as apiUpdateProfile,
+  getChatHistory as apiGetChatHistory,
+  requestPasswordReset as apiRequestPasswordReset,
+  resetPassword as apiResetPassword
 } from '@/services/auth';
 import {
   SocialProvider,
@@ -31,6 +34,9 @@ interface UseAuthReturn {
     requestOTP: (phoneNumber: string) => Promise<string>;
     verifyOTP: (phoneNumber: string, otp: string, sessionId: string) => Promise<void>;
   };
+  requestPasswordReset: (email: string) => Promise<boolean>;
+  resetPassword: (token: string, password: string) => Promise<boolean>;
+  getChatHistory: () => Promise<any[]>;
   clearError: () => void;
 }
 
@@ -196,12 +202,9 @@ export function useAuth(): UseAuthReturn {
       clearError();
       try {
         console.log('Requesting OTP for phone login...');
-        const response = await requestPhoneOTP(phoneNumber);
-        if (response.success && response.sessionId) {
-          console.log('OTP sent successfully');
-          return response.sessionId;
-        }
-        throw new Error('Failed to send OTP');
+        const sessionId = await requestPhoneOTP(phoneNumber);
+        console.log('OTP sent successfully');
+        return sessionId;
       } catch (error) {
         console.error('Phone OTP request failed:', error);
         setError(error instanceof Error ? error.message : 'Failed to send OTP');
@@ -216,9 +219,9 @@ export function useAuth(): UseAuthReturn {
       clearError();
       try {
         console.log('Verifying OTP...');
-        const data = await verifyPhoneOTP(phoneNumber, otp, sessionId);
+        const result = await verifyPhoneOTP(phoneNumber, otp, sessionId);
         console.log('OTP verification successful');
-        setUser(data.user);
+        setUser(result.user);
         setIsAuthenticated(true);
       } catch (error) {
         console.error('Phone OTP verification failed:', error);
@@ -229,6 +232,61 @@ export function useAuth(): UseAuthReturn {
       }
     }
   };
+
+  // Password reset functionality
+  const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
+    setIsLoading(true);
+    clearError();
+    try {
+      console.log('Requesting password reset...');
+      const success = await apiRequestPasswordReset(email);
+      console.log('Password reset email sent successfully');
+      return success;
+    } catch (error) {
+      console.error('Password reset request failed:', error);
+      setError(error instanceof Error ? error.message : 'Failed to request password reset');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearError]);
+
+  const resetPassword = useCallback(async (token: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    clearError();
+    try {
+      console.log('Resetting password...');
+      const success = await apiResetPassword(token, password);
+      console.log('Password reset successful');
+      return success;
+    } catch (error) {
+      console.error('Password reset failed:', error);
+      setError(error instanceof Error ? error.message : 'Failed to reset password');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearError]);
+
+  // Get chat history
+  const getChatHistory = useCallback(async (): Promise<any[]> => {
+    if (!isAuthenticated) {
+      console.log('User not authenticated, cannot fetch chat history');
+      return [];
+    }
+    
+    clearError();
+    try {
+      console.log('Fetching chat history...');
+      const history = await apiGetChatHistory();
+      console.log('Chat history fetched successfully');
+      return history;
+    } catch (error) {
+      console.error('Failed to fetch chat history:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch chat history');
+      return [];
+    }
+  }, [isAuthenticated, clearError]);
 
   return {
     user,
@@ -241,6 +299,9 @@ export function useAuth(): UseAuthReturn {
     updateProfile,
     socialLogin,
     phoneLogin,
+    requestPasswordReset,
+    resetPassword,
+    getChatHistory,
     clearError
   };
 }

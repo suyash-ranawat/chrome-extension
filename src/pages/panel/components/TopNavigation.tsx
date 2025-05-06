@@ -35,15 +35,29 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
             <span>New Conversation</span>
           </button>
           
-          {/* Guest mode displayed in very subtle style */}
-          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">
-            {isAuthenticated ? username : 'Guest Mode'}
-          </span>
         </div>
       </div>
       
-      {/* Sign In button in a separate row, right-aligned */}
-      <div className="flex justify-end py-1 px-3 bg-gray-50">
+      {/* Sign In/Profile button in a separate row, right-aligned */}
+      <div className="flex items-center justify-between p-2">
+      
+        {/* User info displayed in subtle style */}
+          {isAuthenticated ? (
+            <div 
+              className="flex items-center text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded cursor-pointer hover:bg-gray-100"
+              onClick={onAuthClick}
+            >
+              <div className="h-5 w-5 rounded-full bg-green-500 text-white flex items-center justify-center mr-1.5 text-[10px] font-semibold">
+                {username ? username.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <span>{username || 'User'}</span>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">
+              Guest Mode
+            </span>
+          )}
+	  
         <button
           onClick={onAuthClick}
           className="text-blue-600 font-medium text-sm bg-white py-1 px-5 rounded-md border border-gray-200 hover:bg-blue-50"

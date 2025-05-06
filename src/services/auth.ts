@@ -19,17 +19,17 @@ export interface AuthResponse {
 
 export interface ApiResponse {
   success: boolean | number;
-  message: string;
+  message?: string;
   data?: {
-    user_id: string;
-    email: string;
-    phone_number: string | null;
-    is_subscribed: boolean | string | null;
-    logged_in: boolean;
-    uid: string;
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
+    user_id?: string;
+    email?: string;
+    phone_number?: string | null;
+    is_subscribed?: boolean | string | null;
+    logged_in?: boolean;
+    uid?: string;
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
     [key: string]: any; // For additional fields
   };
   validation?: {
@@ -89,48 +89,97 @@ const transformApiResponse = (apiResponse: ApiResponse): AuthResponse => {
     throw new Error('Invalid API response: missing data');
   }
   
+  // Extract user information from API data
+  const userId = data.user_id || '';
+  const email = data.email || '';
+  const phoneNumber = data.phone_number || undefined;
+  const isSubscribed = !!data.is_subscribed;
+  const accessToken = data.access_token || '';
+  
   // Create user object from API data
   const user: User = {
-    id: data.user_id,
-    email: data.email,
-    username: data.email.split('@')[0], // Default username to first part of email
+    id: userId,
+    email: email,
+    username: email.split('@')[0], // Default username to first part of email
     createdAt: new Date().toISOString(),
-    phoneNumber: data.phone_number || undefined,
+    phoneNumber: phoneNumber,
     isEmailVerified: true, // Default to true since they just logged in
-    isPhoneVerified: !!data.phone_number, // True if phone number exists
+    isPhoneVerified: !!phoneNumber, // True if phone number exists
   };
   
   // Create auth response
   return {
-    token: data.access_token,
+    token: accessToken,
     user
   };
+};
+
+// Extract error message from API error response
+const extractErrorMessage = (apiResponse: any): string => {
+  if (typeof apiResponse === 'string') {
+    return apiResponse;
+  }
+  
+  if (apiResponse && typeof apiResponse === 'object') {
+    // Check for message field first
+    if (apiResponse.message) {
+      return apiResponse.message;
+    }
+    
+    // Check for validation errors
+    if (apiResponse.validation) {
+      const validationErrors = apiResponse.validation;
+      // Collect all validation error messages
+      const errorMessages: string[] = [];
+      
+      for (const field in validationErrors) {
+        if (Array.isArray(validationErrors[field])) {
+          errorMessages.push(...validationErrors[field]);
+        }
+      }
+      
+      if (errorMessages.length > 0) {
+        return errorMessages.join('. ');
+      }
+    }
+  }
+  
+  return 'An unknown error occurred';
 };
 
 // Sign up user
 export const signUp = async (username: string, email: string, password: string): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+    // Construct form data
+    const formData = new URLSearchParams();
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('username', username);
+    
+    // Make API request to signup endpoint
+    const response = await fetch(`${API_BASE_URL}/signup`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({ username, email, password }),
+      body: formData.toString(),
     });
-
-    const data = await response.json();
     
-    if (!response.ok) {
-      // If it's an API error with structured response
-      if (data && data.message) {
-        throw data;
-      }
-      throw new Error('Failed to sign up');
+    const apiResponse = await response.json();
+    
+    // Check for API errors
+    if (apiResponse.success === false || apiResponse.success === 0) {
+      throw extractErrorMessage(apiResponse);
     }
-
-    await storeToken(data.token);
-    await storeUser(data.user);
-    return data;
+    
+    // Transform API response
+    const authResponse = transformApiResponse(apiResponse);
+    
+    // Store authentication data
+    await storeToken(authResponse.token);
+    await storeUser(authResponse.user);
+    
+    return authResponse;
   } catch (error) {
     console.error('Sign up error:', error);
     throw error;
@@ -177,6 +226,7 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
     formData.append('email', email);
     formData.append('password', password);
     
+    // Make API request to signin endpoint
     const response = await fetch(`${API_BASE_URL}/signin`, {
       method: 'POST',
       headers: {
@@ -185,15 +235,15 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
       body: formData.toString(),
     });
     
+    // Parse response
     const apiResponse = await response.json();
     
-    // Check for API errors - including simple error messages like "Invalid email or password"
+    // Check for API errors
     if (apiResponse.success === false || apiResponse.success === 0) {
-      console.error('API error:', apiResponse);
-      throw apiResponse;
+      throw extractErrorMessage(apiResponse);
     }
     
-    // Transform API response to expected format
+    // Transform API response
     const authResponse = transformApiResponse(apiResponse);
     
     // Store authentication data
@@ -203,25 +253,31 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
     return authResponse;
   } catch (error) {
     console.error('Sign in error:', error);
-    // Re-throw the error for the UI to handle
     throw error;
   }
 };
 
 // Sign out user
 export const signOut = async (): Promise<void> => {
-  await chrome.storage.local.remove(['authToken', 'user']);
-  // Notify background script
   try {
-    await chrome.runtime.sendMessage({ 
-      type: 'AUTH_STATE_CHANGED', 
-      isAuthenticated: false 
-    });
-  } catch (error) {
-    // Silent failure in production
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('Failed to notify background script:', error);
+    // Remove authentication data from storage
+    await chrome.storage.local.remove(['authToken', 'user']);
+    
+    // Notify background script
+    try {
+      await chrome.runtime.sendMessage({ 
+        type: 'AUTH_STATE_CHANGED', 
+        isAuthenticated: false 
+      });
+    } catch (error) {
+      // Silent failure in production
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to notify background script:', error);
+      }
     }
+  } catch (error) {
+    console.error('Sign out error:', error);
+    throw error;
   }
 };
 
@@ -232,21 +288,179 @@ export const updateProfile = async (userData: Partial<User>): Promise<User> => {
     throw new Error('Not authenticated');
   }
   
-  const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(userData),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw error.message || 'Failed to update profile';
+  try {
+    // Create form data for the update
+    const formData = new URLSearchParams();
+    
+    // Add provided user data to form data
+    if (userData.username) formData.append('username', userData.username);
+    if (userData.email) formData.append('email', userData.email);
+    
+    // Handle password update if provided
+    if (userData.hasOwnProperty('password')) {
+      const passwordData = (userData as any).password;
+      if (passwordData && typeof passwordData === 'object') {
+        if (passwordData.current) formData.append('current_password', passwordData.current);
+        if (passwordData.new) formData.append('new_password', passwordData.new);
+      }
+    }
+    
+    // Make API request to update profile
+    const response = await fetch(`${API_BASE_URL}/update-profile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData.toString(),
+    });
+    
+    // Parse response
+    const apiResponse = await response.json();
+    
+    // Check for API errors
+    if (apiResponse.success === false || apiResponse.success === 0) {
+      throw extractErrorMessage(apiResponse);
+    }
+    
+    // Get updated user data
+    const currentUser = await getUser();
+    
+    if (!currentUser) {
+      throw new Error('User data not found');
+    }
+    
+    // Update user with new information
+    const updatedUser: User = {
+      ...currentUser,
+      ...(userData.username && { username: userData.username }),
+      ...(userData.email && { email: userData.email }),
+    };
+    
+    // Store updated user
+    await storeUser(updatedUser);
+    
+    return updatedUser;
+  } catch (error) {
+    console.error('Update profile error:', error);
+    throw error;
+  }
+};
+
+// Request password reset
+export const requestPasswordReset = async (email: string): Promise<boolean> => {
+  try {
+    // Create form data
+    const formData = new URLSearchParams();
+    formData.append('email', email);
+    
+    // Make API request to forgot-password endpoint
+    const response = await fetch(`${API_BASE_URL}/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
+    });
+    
+    // Parse response
+    const apiResponse = await response.json();
+    
+    // Check if the request was successful
+    if (apiResponse.status && apiResponse.status === true) {
+      return true;
+    }
+    
+    // If we have an error message, throw it
+    if (apiResponse.message) {
+      throw new Error(apiResponse.message);
+    }
+    
+    // Default error
+    throw new Error('Failed to send password reset email');
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    throw error;
+  }
+};
+
+// Reset password with token
+export const resetPassword = async (token: string, password: string): Promise<boolean> => {
+  try {
+    // Create form data
+    const formData = new URLSearchParams();
+    formData.append('token', token);
+    formData.append('password', password);
+    
+    // Make API request to reset-password endpoint
+    const response = await fetch(`${API_BASE_URL}/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
+    });
+    
+    // Parse response
+    const apiResponse = await response.json();
+    
+    // Check if the password reset was successful
+    if (apiResponse.status && apiResponse.status === true) {
+      return true;
+    }
+    
+    // If we have an error message, throw it
+    if (apiResponse.message) {
+      throw new Error(apiResponse.message);
+    }
+    
+    // Default error
+    throw new Error('Failed to reset password');
+  } catch (error) {
+    console.error('Password reset error:', error);
+    throw error;
+  }
+};
+
+// Get chat history for the authenticated user
+export const getChatHistory = async (): Promise<any[]> => {
+  const token = await getToken();
+  if (!token) {
+    throw new Error('Not authenticated');
   }
   
-  const updatedUser = await response.json();
-  await storeUser(updatedUser);
-  return updatedUser;
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User data not found');
+  }
+  
+  try {
+    // Create form data
+    const formData = new URLSearchParams();
+    formData.append('uid', user.id);
+    
+    // Make API request to get chat history
+    const response = await fetch(`${API_BASE_URL}/user/history`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData.toString(),
+    });
+    
+    // Parse response
+    const apiResponse = await response.json();
+    
+    // Check for API errors
+    if (apiResponse.success === false || apiResponse.success === 0) {
+      throw extractErrorMessage(apiResponse);
+    }
+    
+    // Return chat history
+    return apiResponse.data || [];
+  } catch (error) {
+    console.error('Get chat history error:', error);
+    throw error;
+  }
 };

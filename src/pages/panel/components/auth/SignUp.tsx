@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import SocialLoginButtons from './SocialLoginButtons';
-import PhoneAuth from './PhoneAuth';
 import { SocialProvider } from '@/services/socialAuth';
 
 interface SignUpProps {
@@ -10,87 +9,86 @@ interface SignUpProps {
   onSwitchToSignIn: () => void;
   onSocialLogin?: (provider: SocialProvider) => Promise<boolean>;
   onPhoneLogin?: () => void;
+  error?: string | null;
 }
 
 const SignUp: React.FC<SignUpProps> = ({ 
   onSignUp, 
   onSwitchToSignIn, 
   onSocialLogin,
-  onPhoneLogin
+  onPhoneLogin,
+  error
 }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPhoneAuth, setShowPhoneAuth] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    // Simple validation
+    
+    // Local validation
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setValidationError('Passwords do not match');
       return;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setValidationError('Password must be at least 8 characters long');
       return;
     }
 
+    if (!agreedToTerms) {
+      setValidationError('You must agree to the Terms of Service and Privacy Policy');
+      return;
+    }
+
+    // Clear validation error
+    setValidationError(null);
     setIsLoading(true);
 
     try {
-      const success = await onSignUp(username, email, password);
-      if (!success) {
-        setError('Sign up failed. Please try again with a different email or username.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during sign up');
+      await onSignUp(username, email, password);
+      // Success and error handling are managed by the parent component
     } finally {
       setIsLoading(false);
     }
   };
 
   // Handle social login
-  const handleSocialLoginStart = () => {
+  const handleSocialLoginClick = async (provider: SocialProvider) => {
     setIsLoading(true);
-    setError(null);
-  };
-
-  const handleSocialLoginSuccess = () => {
-    setIsLoading(false);
-    // The main auth flow will handle the redirect after successful login
-  };
-
-  const handleSocialLoginError = (error: Error) => {
-    setIsLoading(false);
-    setError(error.message);
+    try {
+      if (onSocialLogin) {
+        await onSocialLogin(provider);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle phone login
   const handlePhoneLoginClick = () => {
     if (onPhoneLogin) {
       onPhoneLogin();
-    } else {
-      setShowPhoneAuth(true);
     }
   };
 
-  // Show phone authentication UI
-  if (showPhoneAuth) {
+  // Loading state
+  if (isLoading) {
     return (
-      <PhoneAuth
-        onSuccess={() => {
-          // The auth wrapper will handle the redirect
-        }}
-        onCancel={() => setShowPhoneAuth(false)}
-      />
+      <div className="flex flex-col items-center justify-center p-6 h-full w-full">
+        <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-green-500 animate-spin mb-4"></div>
+        <p className="text-gray-600">Creating your account...</p>
+      </div>
     );
   }
+
+  // The error to display - either from parent or local validation
+  const displayError = error || validationError;
 
   return (
     <div className="flex flex-col items-center p-6">
@@ -104,19 +102,16 @@ const SignUp: React.FC<SignUpProps> = ({
         <p className="mt-1 text-sm text-gray-600">Sign up to get started with Search.com</p>
       </div>
 
-      {error && (
+      {displayError && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md w-full max-w-md text-sm">
-          {error}
+          {displayError}
         </div>
       )}
 
       {/* Social Login Buttons */}
       <div className="w-full max-w-md mb-6">
         <SocialLoginButtons
-          onLoginStart={handleSocialLoginStart}
-          onLoginSuccess={handleSocialLoginSuccess}
-          onLoginError={handleSocialLoginError}
-          onSocialLogin={onSocialLogin}
+          onSocialLogin={handleSocialLoginClick}
         />
       </div>
 
@@ -167,6 +162,8 @@ const SignUp: React.FC<SignUpProps> = ({
             name="terms"
             type="checkbox"
             required
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
             className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
           />
           <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">

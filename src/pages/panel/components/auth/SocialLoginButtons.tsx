@@ -1,35 +1,16 @@
 import React from 'react';
-import { SocialProvider, initiateSocialLogin } from '@/services/socialAuth';
+import { SocialProvider } from '@/services/socialAuth';
 
 interface SocialLoginButtonsProps {
-  onLoginStart: () => void;
-  onLoginSuccess: () => void;
-  onLoginError: (error: Error) => void;
   onSocialLogin?: (provider: SocialProvider) => Promise<boolean>;
 }
 
 const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
-  onLoginStart,
-  onLoginSuccess,
-  onLoginError,
   onSocialLogin
 }) => {
   const handleSocialLogin = async (provider: SocialProvider) => {
-    onLoginStart();
-    try {
-      if (onSocialLogin) {
-        // Use the parent component's social login handler
-        const success = await onSocialLogin(provider);
-        if (success) {
-          onLoginSuccess();
-        }
-      } else {
-        // Use the default social login method
-        await initiateSocialLogin(provider);
-        onLoginSuccess();
-      }
-    } catch (error) {
-      onLoginError(error instanceof Error ? error : new Error('Login failed'));
+    if (onSocialLogin) {
+      await onSocialLogin(provider);
     }
   };
 

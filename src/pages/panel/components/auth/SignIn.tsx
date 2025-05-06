@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import SocialLoginButtons from './SocialLoginButtons';
-import PhoneAuth from './PhoneAuth';
 import { SocialProvider } from '@/services/socialAuth';
 
 interface SignInProps {
@@ -22,73 +21,39 @@ const SignIn: React.FC<SignInProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [isLoading, setIsLoading] = useState(false);
-  const [showPhoneAuth, setShowPhoneAuth] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await onSignIn(email, password);
-      if (!success) {
-         console.log("error message setting up");
-	console.log(error);
-      }
-    } catch (err: any) {
-      // Extract error message from the API response or use a default message
-      let errorMessage = 'An error occurred during sign in';
-      
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (err && typeof err === 'object') {
-        if (err.message) {
-          errorMessage = err.message;
-        } else if (err.error) {
-          errorMessage = err.error;
-        }
-      }
-      
+      await onSignIn(email, password);
+      // No need to handle errors here - parent component does that
     } finally {
       setIsLoading(false);
     }
   };
 
   // Handle social login
-  const handleSocialLoginStart = () => {
+  const handleSocialLoginClick = async (provider: SocialProvider) => {
     setIsLoading(true);
-  };
-
-  const handleSocialLoginSuccess = () => {
-    setIsLoading(false);
-    // The main auth flow will handle the redirect after successful login
-  };
-
-  const handleSocialLoginError = (error: Error) => {
-    setIsLoading(false);
+    try {
+      if (onSocialLogin) {
+        await onSocialLogin(provider);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle phone login
   const handlePhoneLoginClick = () => {
     if (onPhoneLogin) {
       onPhoneLogin();
-    } else {
-      setShowPhoneAuth(true);
     }
   };
-
-  // Show phone authentication UI
-  if (showPhoneAuth) {
-    return (
-      <PhoneAuth
-        onSuccess={() => {
-          // The auth wrapper will handle the redirect
-        }}
-        onCancel={() => setShowPhoneAuth(false)}
-      />
-    );
-  }
 
   // Loading state
   if (isLoading) {
@@ -115,10 +80,7 @@ const SignIn: React.FC<SignInProps> = ({
       {/* Social Login Buttons */}
       <div className="w-full max-w-md mb-6">
         <SocialLoginButtons
-          onLoginStart={handleSocialLoginStart}
-          onLoginSuccess={handleSocialLoginSuccess}
-          onLoginError={handleSocialLoginError}
-          onSocialLogin={onSocialLogin}
+          onSocialLogin={handleSocialLoginClick}
         />
       </div>
       
@@ -165,6 +127,8 @@ const SignIn: React.FC<SignInProps> = ({
               name="remember-me"
               type="checkbox"
               className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
             />
             <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
               Remember me

@@ -5,9 +5,8 @@ import SideIcons from './components/SideIcons';
 import ChatArea from './components/ChatArea';
 import InputArea from './components/InputArea';
 import SuggestedPrompts from './components/SuggestedPrompts';
+import Auth from './components/auth/Auth';
 import Profile from './components/auth/Profile';
-import SignIn from './components/auth/SignIn';
-import SignUp from './components/auth/SignUp';
 import useAuth from '@/hooks/useAuth';
 
 export interface Message {
@@ -19,13 +18,10 @@ const App: React.FC = () => {
   const { 
     user, 
     isAuthenticated, 
-    isLoading, 
-    signIn, 
-    signUp, 
-    signOut, 
+    isLoading,
+    signOut,
     updateProfile,
-    socialLogin,
-    phoneLogin
+    error: authError
   } = useAuth();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -33,10 +29,8 @@ const App: React.FC = () => {
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [showSuggestions, setShowSuggestions] = useState(true);
-  const [currentView, setCurrentView] = useState<'chat' | 'search' | 'write' | 'image' | 'file' | 'auth'>('chat');
-  const [authView, setAuthView] = useState<'signin' | 'signup'>('signin');
+  const [currentView, setCurrentView] = useState<'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
 
   // Retrieve current chat ID from localStorage on component mount
   useEffect(() => {
@@ -91,47 +85,27 @@ const App: React.FC = () => {
     setCurrentChatId(undefined);
     localStorage.removeItem('currentChatId');
     setShowSuggestions(true);
-    // Switch back to chat view if on auth view
-    if (currentView === 'auth') {
+    // Switch back to chat view if not on chat view
+    if (currentView !== 'chat') {
       setCurrentView('chat');
     }
   };
 
-  const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth') => {
-    setCurrentView(view);
-  };
-
-  // Handle authentication actions
-  const handleSignIn = async (email: string, password: string) => {
+  // Handle sign out
+  const handleSignOut = async () => {
     try {
-      await signIn(email, password);
-      // After successful sign-in, switch back to chat view
+      await signOut();
+      // After sign out, return to chat view
       setCurrentView('chat');
-      return true;
     } catch (error) {
-      setError("Sign in failed because of invalid credentials.");
-      console.error('Sign in failed:', error);
-      return false;
+      console.error('Sign out failed:', error);
     }
   };
 
-  const handleSignUp = async (username: string, email: string, password: string) => {
-    try {
-      await signUp(username, email, password);
-      // After successful sign-up, switch back to chat view
-      setCurrentView('chat');
-      return true;
-    } catch (error) {
-      console.error('Sign up failed:', error);
-      return false;
-    }
-  };
-
+  // Handle profile update
   const handleUpdateProfile = async (userData: any) => {
     try {
       await updateProfile(userData);
-      // After profile update, switch back to chat view
-      setCurrentView('chat');
       return true;
     } catch (error) {
       console.error('Profile update failed:', error);
@@ -139,105 +113,85 @@ const App: React.FC = () => {
     }
   };
 
-  // Render auth view (sign in/sign up/profile)
-  const renderAuthView = () => {
-    if (isLoading) {
-      return (
-        <div className="flex h-full items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-        </div>
-      );
-    }
-
-    if (isAuthenticated) {
-      return (
-        <Profile 
-          user={user}
-          onSignOut={() => {
-            signOut();
-            setCurrentView('chat');
-          }} 
-          onUpdate={handleUpdateProfile}
-        />
-      );
-    }
-    
-    return (
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">
-              {authView === 'signin' ? 'Sign In' : 'Sign Up'}
-            </h2>
-            <button 
-              onClick={() => setCurrentView('chat')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-auto">
-          {authView === 'signin' ? (
-            <SignIn
-              onSignIn={handleSignIn}
-              onSwitchToSignUp={() => setAuthView('signup')}
-              onSocialLogin={socialLogin}
-              onPhoneLogin={() => {}} // Implement if needed
-	      error={error}
-            />
-          ) : (
-            <SignUp
-              onSignUp={handleSignUp}
-              onSwitchToSignIn={() => setAuthView('signin')}
-              onSocialLogin={socialLogin}
-              onPhoneLogin={() => {}} // Implement if needed
-            />
-          )}
-        </div>
-      </div>
-    );
+  // Switch between different views
+  const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile') => {
+    setCurrentView(view);
   };
 
-  // Render chat interface
-  const renderChatInterface = () => (
-    <div className="flex-1 flex flex-col h-full">
-      <TopNavigation 
-        onNewConversation={handleNewConversation} 
-        isAuthenticated={isAuthenticated}
-        username={user?.username}
-        onAuthClick={() => setCurrentView('auth')}
-      />
-      
-      {showSuggestions && messages.length === 0 ? (
-        <SuggestedPrompts onPromptClick={handlePromptClick} />
-      ) : (
-        <ChatArea 
-          messages={messages} 
-          isLoading={isMessageLoading} 
-          messagesEndRef={messagesEndRef} 
-        />
-      )}
-      
-      <InputArea 
-        input={input} 
-        setInput={setInput} 
-        handleSubmit={(e) => {
-          e.preventDefault();
-          handleSubmit(input);
-          setInput('');
-        }} 
-        isLoading={isMessageLoading} 
-      />
-    </div>
-  );
+  // Handle completion of authentication flow (redirecting back to chat)
+  const handleAuthComplete = () => {
+    setCurrentView('chat');
+  };
 
+  // Auth view
+  if (currentView === 'auth') {
+    return (
+      <div className="flex h-full">
+        <div className="flex-1">
+          <Auth onAuthComplete={handleAuthComplete} />
+        </div>
+        <SideIcons 
+          currentView={currentView} 
+          onViewChange={changeView} 
+          isAuthenticated={isAuthenticated} 
+        />
+      </div>
+    );
+  }
+
+  // Profile view
+  if (currentView === 'profile') {
+    return (
+      <div className="flex h-full">
+        <div className="flex-1">
+          <Profile 
+            user={user}
+            onSignOut={handleSignOut}
+            onUpdate={handleUpdateProfile}
+            error={authError}
+          />
+        </div>
+        <SideIcons 
+          currentView={currentView} 
+          onViewChange={changeView} 
+          isAuthenticated={isAuthenticated} 
+        />
+      </div>
+    );
+  }
+
+  // Main chat interface
   return (
     <div className="flex h-full">
-      {currentView === 'auth' ? renderAuthView() : renderChatInterface()}
+      <div className="flex-1 flex flex-col h-full">
+        <TopNavigation 
+          onNewConversation={handleNewConversation} 
+          isAuthenticated={isAuthenticated}
+          username={user?.username}
+          onAuthClick={() => isAuthenticated ? setCurrentView('profile') : setCurrentView('auth')}
+        />
+        
+        {showSuggestions && messages.length === 0 ? (
+          <SuggestedPrompts onPromptClick={handlePromptClick} />
+        ) : (
+          <ChatArea 
+            messages={messages} 
+            isLoading={isMessageLoading} 
+            messagesEndRef={messagesEndRef} 
+          />
+        )}
+        
+        <InputArea 
+          input={input} 
+          setInput={setInput} 
+          handleSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit(input);
+            setInput('');
+          }} 
+          isLoading={isMessageLoading} 
+        />
+      </div>
       <SideIcons 
         currentView={currentView} 
         onViewChange={changeView} 
