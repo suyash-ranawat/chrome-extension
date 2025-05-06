@@ -1,5 +1,3 @@
-// src/pages/panel/components/auth/AuthWrapper.tsx
-
 import React, { useState, useEffect } from 'react';
 import useAuth from '@/hooks/useAuth';
 import SignIn from './SignIn';
@@ -32,6 +30,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const [currentView, setCurrentView] = useState<AuthView>('main');
   const [phoneAuthSessionId, setPhoneAuthSessionId] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [authError, setAuthError] = useState<string | null>(null);
   
   // Update view when authentication state changes
   useEffect(() => {
@@ -49,26 +48,85 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
       isLoading, 
       currentView,
       hasUser: !!user,
-      error
+      error,
+      authError
     });
-  }, [isAuthenticated, isLoading, currentView, user, error]);
+  }, [isAuthenticated, isLoading, currentView, user, error, authError]);
+
+  // Sync error state from useAuth hook to component state
+  useEffect(() => {
+    if (error) {
+      setAuthError(error);
+    }
+  }, [error]);
 
   const handleSignIn = async (email: string, password: string) => {
+    // Clear any previous errors
+    setAuthError(null);
+    clearError();
+    
     try {
-      await signIn(email, password);
+      console.log('AuthWrapper: Attempting to sign in...');
+      const success = await signIn(email, password);
+      
+      // If the sign-in function returns false but didn't throw an error
+      if (!success) {
+        console.log('AuthWrapper: Sign-in returned false');
+        setAuthError('Invalid email or password.');
+        return false;
+      }
+      
+      console.log('AuthWrapper: Sign-in successful');
       return true;
-    } catch (error) {
-      console.error('Sign in failed:', error);
+    } catch (err: any) {
+      console.error('AuthWrapper: Sign in failed:', err);
+      
+      // Extract error message
+      let errorMessage = 'An error occurred during sign in';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err && typeof err === 'object') {
+        if (err.message) {
+          errorMessage = err.message;
+        } else if (err.error) {
+          errorMessage = err.error;
+        }
+      }
+      
+      // Set local error state
+      setAuthError(errorMessage);
       return false;
     }
   };
 
   const handleSignUp = async (username: string, email: string, password: string) => {
+    // Clear any previous errors
+    setAuthError(null);
+    clearError();
+    
     try {
-      await signUp(username, email, password);
+      const success = await signUp(username, email, password);
+      if (!success) {
+        setAuthError('Registration failed. Please try again.');
+        return false;
+      }
       return true;
-    } catch (error) {
-      console.error('Sign up failed:', error);
+    } catch (err: any) {
+      console.error('Sign up failed:', err);
+      
+      // Extract error message
+      let errorMessage = 'An error occurred during registration';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err && typeof err === 'object') {
+        if (err.message) {
+          errorMessage = err.message;
+        } else if (err.error) {
+          errorMessage = err.error;
+        }
+      }
+      
+      setAuthError(errorMessage);
       return false;
     }
   };
@@ -79,58 +137,139 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
       setCurrentView('signin');
     } catch (error) {
       console.error('Sign out failed:', error);
+      setAuthError('Failed to sign out. Please try again.');
     }
   };
 
   const handleUpdateProfile = async (userData: any) => {
+    setAuthError(null);
+    
     try {
-      await updateProfile(userData);
+      const success = await updateProfile(userData);
+      if (!success) {
+        setAuthError('Profile update failed. Please try again.');
+        return false;
+      }
       setCurrentView('main');
       return true;
-    } catch (error) {
-      console.error('Profile update failed:', error);
+    } catch (err: any) {
+      console.error('Profile update failed:', err);
+      
+      // Extract error message
+      let errorMessage = 'An error occurred during profile update';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err && typeof err === 'object') {
+        if (err.message) {
+          errorMessage = err.message;
+        } else if (err.error) {
+          errorMessage = err.error;
+        }
+      }
+      
+      setAuthError(errorMessage);
       return false;
     }
   };
 
   const handleSocialLogin = async (provider: SocialProvider) => {
+    setAuthError(null);
+    
     try {
-      await socialLogin(provider);
+      const success = await socialLogin(provider);
+      if (!success) {
+        setAuthError(`${provider} login failed. Please try again.`);
+        return false;
+      }
       return true;
-    } catch (error) {
-      console.error(`${provider} login failed:`, error);
+    } catch (err: any) {
+      console.error(`${provider} login failed:`, err);
+      
+      // Extract error message
+      let errorMessage = `An error occurred during ${provider} login`;
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err && typeof err === 'object') {
+        if (err.message) {
+          errorMessage = err.message;
+        } else if (err.error) {
+          errorMessage = err.error;
+        }
+      }
+      
+      setAuthError(errorMessage);
       return false;
     }
   };
 
   const handlePhoneAuth = {
     requestOTP: async (phone: string) => {
+      setAuthError(null);
+      
       try {
         setPhoneNumber(phone);
         const sessionId = await phoneLogin.requestOTP(phone);
         setPhoneAuthSessionId(sessionId);
         return true;
-      } catch (error) {
-        console.error('Phone OTP request failed:', error);
+      } catch (err: any) {
+        console.error('Phone OTP request failed:', err);
+        
+        // Extract error message
+        let errorMessage = 'Failed to send verification code';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (err && typeof err === 'object') {
+          if (err.message) {
+            errorMessage = err.message;
+          } else if (err.error) {
+            errorMessage = err.error;
+          }
+        }
+        
+        setAuthError(errorMessage);
         return false;
       }
     },
     
     verifyOTP: async (otp: string) => {
       if (!phoneAuthSessionId || !phoneNumber) {
+        setAuthError('Phone verification session expired. Please try again.');
         return false;
       }
       
+      setAuthError(null);
+      
       try {
-        await phoneLogin.verifyOTP(phoneNumber, otp, phoneAuthSessionId);
+        const success = await phoneLogin.verifyOTP(phoneNumber, otp, phoneAuthSessionId);
+        if (!success) {
+          setAuthError('Invalid verification code. Please try again.');
+          return false;
+        }
         setCurrentView('main');
         return true;
-      } catch (error) {
-        console.error('Phone OTP verification failed:', error);
+      } catch (err: any) {
+        console.error('Phone OTP verification failed:', err);
+        
+        // Extract error message
+        let errorMessage = 'Failed to verify code';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (err && typeof err === 'object') {
+          if (err.message) {
+            errorMessage = err.message;
+          } else if (err.error) {
+            errorMessage = err.error;
+          }
+        }
+        
+        setAuthError(errorMessage);
         return false;
       }
     }
   };
+
+  // Combine auth errors from hook and component state
+  const combinedError = authError || error;
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -152,6 +291,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
             handleUpdateProfile(userData);
             setCurrentView('main');
           }}
+          error={combinedError}
         />
       );
     }
@@ -162,7 +302,8 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
         return React.cloneElement(child, { 
           user,
           onViewProfile: () => setCurrentView('profile'),
-          onSignOut: handleSignOut
+          onSignOut: handleSignOut,
+          error: combinedError
         } as any);
       }
       return child;
@@ -179,6 +320,9 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
           <PhoneAuth 
             onSuccess={() => setCurrentView('main')}
             onCancel={() => setCurrentView('signin')}
+            error={combinedError}
+            onRequestOTP={handlePhoneAuth.requestOTP}
+            onVerifyOTP={handlePhoneAuth.verifyOTP}
           />
         </div>
       </div>
@@ -192,18 +336,23 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
         {currentView === 'signin' && (
           <SignIn
             onSignIn={async (email, password) => {
+              console.log('SignIn component calling handleSignIn');
               const success = await handleSignIn(email, password);
+              console.log('handleSignIn result:', success);
               return success;
             }}
             onSwitchToSignUp={() => {
               clearError();
+              setAuthError(null);
               setCurrentView('signup');
             }}
             onSocialLogin={handleSocialLogin}
             onPhoneLogin={() => {
               clearError();
+              setAuthError(null);
               setCurrentView('phone');
             }}
+            error={combinedError} // Pass error to SignIn component
           />
         )}
         
@@ -215,13 +364,16 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
             }}
             onSwitchToSignIn={() => {
               clearError();
+              setAuthError(null);
               setCurrentView('signin');
             }}
             onSocialLogin={handleSocialLogin}
             onPhoneLogin={() => {
               clearError();
+              setAuthError(null);
               setCurrentView('phone');
             }}
+            error={combinedError} // Pass error to SignUp component
           />
         )}
       </div>

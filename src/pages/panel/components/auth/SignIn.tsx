@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import SocialLoginButtons from './SocialLoginButtons';
@@ -10,32 +10,46 @@ interface SignInProps {
   onSwitchToSignUp: () => void;
   onSocialLogin?: (provider: SocialProvider) => Promise<boolean>;
   onPhoneLogin?: () => void;
+  error?: string | null;
 }
 
 const SignIn: React.FC<SignInProps> = ({ 
   onSignIn, 
   onSwitchToSignUp,
   onSocialLogin,
-  onPhoneLogin 
+  onPhoneLogin,
+  error 
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneAuth, setShowPhoneAuth] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
 
     try {
       const success = await onSignIn(email, password);
       if (!success) {
-        setError('Sign in failed. Please check your credentials and try again.');
+         console.log("error message setting up");
+	console.log(error);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during sign in');
+    } catch (err: any) {
+      // Extract error message from the API response or use a default message
+      let errorMessage = 'An error occurred during sign in';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err && typeof err === 'object') {
+        if (err.message) {
+          errorMessage = err.message;
+        } else if (err.error) {
+          errorMessage = err.error;
+        }
+      }
+      
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +58,6 @@ const SignIn: React.FC<SignInProps> = ({
   // Handle social login
   const handleSocialLoginStart = () => {
     setIsLoading(true);
-    setError(null);
   };
 
   const handleSocialLoginSuccess = () => {
@@ -54,7 +67,6 @@ const SignIn: React.FC<SignInProps> = ({
 
   const handleSocialLoginError = (error: Error) => {
     setIsLoading(false);
-    setError(error.message);
   };
 
   // Handle phone login
@@ -78,6 +90,16 @@ const SignIn: React.FC<SignInProps> = ({
     );
   }
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 h-full w-full">
+        <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-green-500 animate-spin mb-4"></div>
+        <p className="text-gray-600">Signing in...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center p-6">
       <div className="mb-6 text-center">
@@ -90,12 +112,6 @@ const SignIn: React.FC<SignInProps> = ({
         <p className="mt-1 text-sm text-gray-600">Welcome back! Please enter your details.</p>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md w-full max-w-md text-sm">
-          {error}
-        </div>
-      )}
-
       {/* Social Login Buttons */}
       <div className="w-full max-w-md mb-6">
         <SocialLoginButtons
@@ -105,6 +121,21 @@ const SignIn: React.FC<SignInProps> = ({
           onSocialLogin={onSocialLogin}
         />
       </div>
+      
+      {error && (
+        <div className="mb-6 p-4 w-full max-w-md bg-red-50 border border-red-200 rounded-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-red-800">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
         <Input

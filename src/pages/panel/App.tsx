@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'chat' | 'search' | 'write' | 'image' | 'file' | 'auth'>('chat');
   const [authView, setAuthView] = useState<'signin' | 'signup'>('signin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Retrieve current chat ID from localStorage on component mount
   useEffect(() => {
@@ -108,6 +109,7 @@ const App: React.FC = () => {
       setCurrentView('chat');
       return true;
     } catch (error) {
+      setError("Sign in failed because of invalid credentials.");
       console.error('Sign in failed:', error);
       return false;
     }
@@ -185,6 +187,7 @@ const App: React.FC = () => {
               onSwitchToSignUp={() => setAuthView('signup')}
               onSocialLogin={socialLogin}
               onPhoneLogin={() => {}} // Implement if needed
+	      error={error}
             />
           ) : (
             <SignUp
