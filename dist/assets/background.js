@@ -1,1 +1,0 @@
-chrome.runtime.onInstalled.addListener(()=>{chrome.sidePanel.setOptions({path:"panel.html",enabled:!0})});chrome.action.onClicked.addListener(e=>{chrome.sidePanel.setOptions({tabId:e.id,path:"panel.html",enabled:!0},()=>{chrome.sidePanel.open({tabId:e.id})})});
