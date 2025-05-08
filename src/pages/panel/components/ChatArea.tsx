@@ -24,8 +24,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, messagesEndRef
             className={classNames(
               'max-w-[80%] rounded-lg p-3',
               message.role === 'user'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-800'
+                ? 'bg-gray-100 text-gray-800'
+                : ''
             )}
           >
             {message.role === 'assistant' ? (

@@ -105,6 +105,7 @@ export function useAuth(): UseAuthReturn {
       console.log('Sign in successful');
       setUser(data.user);
       setIsAuthenticated(true);
+      broadcastAuthChange(true);
     } catch (error) {
       console.error('Sign in failed:', error);
       setError(error instanceof Error ? error.message : 'Sign in failed');
@@ -124,6 +125,7 @@ export function useAuth(): UseAuthReturn {
       console.log('Sign up successful');
       setUser(data.user);
       setIsAuthenticated(true);
+      broadcastAuthChange(true);
     } catch (error) {
       console.error('Sign up failed:', error);
       setError(error instanceof Error ? error.message : 'Sign up failed');
@@ -142,6 +144,7 @@ export function useAuth(): UseAuthReturn {
       await apiSignOut();
       setUser(null);
       setIsAuthenticated(false);
+      broadcastAuthChange(false);
       console.log('Sign out successful');
     } catch (error) {
       console.error('Sign out failed:', error);
@@ -287,6 +290,24 @@ export function useAuth(): UseAuthReturn {
       return [];
     }
   }, [isAuthenticated, clearError]);
+
+  // Add a function to broadcast auth state changes
+  const broadcastAuthChange = (state: boolean) => {
+    // Notify background script
+    try {
+      chrome.runtime.sendMessage({
+        type: 'AUTH_STATE_CHANGED',
+        isAuthenticated: state
+      });
+    } catch (error) {
+      console.error('Failed to notify about auth state change:', error);
+    }
+    
+    // Optionally dispatch a custom event for components to listen to
+    document.dispatchEvent(new CustomEvent('auth_state_changed', {
+      detail: { isAuthenticated: state }
+    }));
+  };
 
   return {
     user,

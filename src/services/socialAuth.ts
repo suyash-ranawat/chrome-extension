@@ -1,96 +1,564 @@
 import { API_BASE_URL } from './config';
-import { storeToken, storeUser, User } from './auth';
+import { storeToken, storeUser, User, storeRefreshToken } from './auth';
 
 export type SocialProvider = 'google' | 'facebook' | 'microsoft' | 'apple';
 
-// Initiate social login with a specific provider
+/**
+ * Function to handle social logins by making direct API calls to the backend
+ * This approach uses the API endpoints directly rather than going through SDKs
+ */
 export const initiateSocialLogin = async (provider: SocialProvider): Promise<void> => {
-  // Create a popup window for the OAuth flow
-  const width = 600;
-  const height = 600;
-  const left = window.screen.width / 2 - width / 2;
-  const top = window.screen.height / 2 - height / 2;
-  
-  // Construct the appropriate endpoint URL based on the provider
-  let url = '';
-  switch (provider) {
-    case 'google':
-      url = `${API_BASE_URL}/auth/google`;
-      break;
-    case 'facebook':
-      url = `${API_BASE_URL}/auth/facebook`;
-      break;
-    case 'microsoft':
-      url = `${API_BASE_URL}/auth/microsoft`;
-      break;
-    case 'apple':
-      url = `${API_BASE_URL}/auth/apple`;
-      break;
-    default:
-      throw new Error(`Unsupported provider: ${provider}`);
+  try {
+    console.log(`Initiating ${provider} login...`);
+    
+    switch (provider) {
+      case 'google':
+        return await handleGoogleAuth();
+      case 'facebook':
+        return await handleFacebookAuth();
+      case 'microsoft':
+        return await handleMicrosoftAuth();
+      case 'apple':
+        return await handleAppleAuth();
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
+    }
+  } catch (error) {
+    console.error(`${provider} login failed:`, error);
+    throw error;
   }
-  
-  // Open the popup
-  const popup = window.open(
-    url,
-    `${provider}Auth`,
-    `width=${width},height=${height},left=${left},top=${top}`
-  );
-  
-  if (!popup) {
-    throw new Error('Could not open popup window. Please check your popup blocker settings.');
+};
+
+/**
+ * Handle Google Authentication
+ */
+// const handleGoogleAuth = async (): Promise<void> => {
+//   return new Promise((resolve, reject) => {
+//     // First load Google script if needed
+//     const loadGoogleScript = () => {
+//       const script = document.createElement('script');
+//       script.src = 'https://accounts.google.com/gsi/client';
+//       script.id = 'google-signin-script';
+//       script.async = true;
+//       script.defer = true;
+//       script.onload = initGoogleAuth;
+//       script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+//       document.head.appendChild(script);
+//     };
+
+//     // Initialize Google Auth
+//     const initGoogleAuth = () => {
+//       if (!window.google || !window.google.accounts) {
+//         reject(new Error('Google Identity Services not available'));
+//         return;
+//       }
+
+//       // Create a hidden button element
+//       const googleButtonContainer = document.createElement('div');
+//       googleButtonContainer.style.display = 'none';
+//       document.body.appendChild(googleButtonContainer);
+
+//       // Set up callback
+//       window.handleCredentialResponse = (response) => {
+//         if (!response.credential) {
+//           reject(new Error('No credential received from Google'));
+//           return;
+//         }
+
+//         // Parse JWT token
+//         const responsePayload = parseJwt(response.credential);
+//         console.log('Google auth successful:', responsePayload);
+
+//         const userData = {
+//           full_name: responsePayload.name,
+//           username: responsePayload.email,
+//           email: responsePayload.email,
+//           google_id: responsePayload.sub,
+//           image_url: responsePayload.picture,
+//           task: 'signin'
+//         };
+
+//         registerSocialUser(userData)
+//           .then(() => resolve())
+//           .catch((error) => reject(error));
+//       };
+
+//       // Initialize Google Sign-In with error handling
+//       try {
+//         const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+//         console.log('Using Google client ID:', clientId);
+
+//         window.google.accounts.id.initialize({
+//           client_id: clientId,
+//           callback: window.handleCredentialResponse,
+//           ux_mode: "popup"
+//         });
+
+//         // Render button and trigger click
+//         window.google.accounts.id.renderButton(googleButtonContainer, {
+//           type: "icon",
+//           width: 200
+//         });
+
+//         // Try prompt first
+//         window.google.accounts.id.prompt((notification) => {
+//           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+//             console.log('Google prompt not displayed:', notification.getNotDisplayedReason());
+//             // Try clicking the button as fallback
+//             const button = googleButtonContainer.querySelector('div[role=button]');
+//             if (button) {
+//               (button as HTMLElement).click();
+//             } else {
+//               reject(new Error('Failed to display Google login prompt'));
+//             }
+//           }
+//         });
+//       } catch (error) {
+//         console.error('Google auth initialization error:', error);
+//         reject(error);
+//       }
+//     };
+
+//     // Start the process
+//     if (document.getElementById('google-signin-script') && window.google?.accounts) {
+//       // Script already loaded
+//       initGoogleAuth();
+//     } else {
+//       // Load script first
+//       loadGoogleScript();
+//     }
+//   });
+// };
+const handleGoogleAuth = async (): Promise<void> => {
+  const redirectUri = chrome.identity.getRedirectURL('google');
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
+    `?client_id=${YOUR_GOOGLE_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=token` +
+    `&scope=openid%20email%20profile`;
+
+  return new Promise<void>((resolve, reject) => {
+    chrome.identity.launchWebAuthFlow(
+      {
+        url: authUrl,
+        interactive: true
+      },
+      async (redirectUrl) => {
+        if (chrome.runtime.lastError || !redirectUrl) {
+          return reject(chrome.runtime.lastError || new Error("No redirect URL"));
+        }
+
+        const accessToken = new URL(redirectUrl).hash
+          .substring(1)
+          .split('&')
+          .find(param => param.startsWith("access_token="))
+          ?.split('=')[1];
+
+        if (!accessToken) {
+          return reject(new Error("No access token found"));
+        }
+
+        // Fetch user info from Google
+        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        const userInfo = await res.json();
+
+        const userData = {
+          full_name: userInfo.name,
+          username: userInfo.email,
+          email: userInfo.email,
+          google_id: userInfo.sub,
+          image_url: userInfo.picture,
+          task: 'signin'
+        };
+
+        // Send data to your existing registration API
+        await registerSocialUser(userData);
+        resolve();
+      }
+    );
+  });
+};
+
+
+
+/**
+ * Handle Facebook Authentication
+ */
+const handleFacebookAuth = async (): Promise<void> => {
+  // Load Facebook SDK
+  if (!document.getElementById('facebook-jssdk')) {
+    const script = document.createElement('script');
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.id = 'facebook-jssdk';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+    
+    await new Promise((resolve, reject) => {
+      script.onload = resolve;
+      script.onerror = reject;
+    });
   }
   
   return new Promise((resolve, reject) => {
-    // Listen for messages from the popup
-    const messageListener = async (event: MessageEvent) => {
-      // Verify the origin to prevent security issues
-      if (event.origin !== API_BASE_URL || !event.data) return;
+    try {
+      // Initialize Facebook SDK if not already initialized
+      if (!window.FB) {
+        reject(new Error('Facebook SDK not available'));
+        return;
+      }
       
-      try {
-        // Handle the auth response
-        if (event.data.type === 'AUTH_SUCCESS') {
-          console.log('Received AUTH_SUCCESS message from popup', event.data);
+      window.FB.init({
+        appId: process.env.REACT_APP_FACEBOOK_APP_ID || '',
+        xfbml: true,
+        version: 'v18.0'
+      });
+      
+      // Trigger Facebook login
+      window.FB.login(function(response) {
+        if (response.authResponse) {
+          const accessToken = response.authResponse.accessToken;
+          const userId = response.authResponse.userID;
           
-          // Save the token and user data
-          await storeToken(event.data.token);
-          await storeUser(event.data.user);
-          
-          // Close the popup
-          if (popup) popup.close();
-          
-          // Resolve the promise
-          resolve();
-        } else if (event.data.type === 'AUTH_ERROR') {
-          console.error('Received AUTH_ERROR message from popup', event.data);
-          
-          // Close the popup
-          if (popup) popup.close();
-          
-          // Reject with the error
-          reject(new Error(event.data.error || 'Authentication failed'));
+          // Get user profile
+          window.FB.api('/me', {
+            locale: 'en_US',
+            fields: 'name, email, picture'
+          }, function(profileResponse) {
+            if (!profileResponse || profileResponse.error) {
+              reject(new Error(profileResponse?.error?.message || 'Failed to fetch profile'));
+              return;
+            }
+            
+            // Prepare data for API call
+            const userData = {
+              full_name: profileResponse.name,
+              username: profileResponse.email,
+              email: profileResponse.email,
+              fb_id: userId,
+              image_url: profileResponse.picture?.data?.url || '',
+              task: 'signin' // Using 'signin' as specified in your cURL example
+            };
+            
+            // Send data to API
+            registerSocialUser(userData)
+              .then(() => resolve())
+              .catch((error) => reject(error));
+          });
+        } else {
+          reject(new Error('User cancelled login or did not fully authorize'));
         }
-      } catch (error) {
-        console.error('Error handling auth message:', error);
-        reject(error);
-      } finally {
-        // Remove the event listener
-        window.removeEventListener('message', messageListener);
-      }
-    };
-    
-    // Add message listener
-    window.addEventListener('message', messageListener);
-    
-    // Add timeout to handle cases where the popup is closed without completing auth
-    const checkClosed = setInterval(() => {
-      if (popup && popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener('message', messageListener);
-        reject(new Error('Authentication window was closed'));
-      }
-    }, 500);
+      }, {
+        scope: 'email'
+      });
+    } catch (error) {
+      reject(error);
+    }
   });
+};
+
+/**
+ * Handle Microsoft Authentication
+ */
+const handleMicrosoftAuth = async (): Promise<void> => {
+  // Load Microsoft MSAL
+  if (!document.getElementById('microsoft-msal-script')) {
+    const script = document.createElement('script');
+    script.src = 'https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js';
+    script.id = 'microsoft-msal-script';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+    
+    await new Promise((resolve, reject) => {
+      script.onload = resolve;
+      script.onerror = reject;
+    });
+  }
+  
+  return new Promise((resolve, reject) => {
+    try {
+      if (!window.msal) {
+        reject(new Error('MSAL library not available'));
+        return;
+      }
+      
+      // Initialize MSAL
+      const msalConfig = {
+        auth: {
+          clientId: process.env.REACT_APP_MICROSOFT_CLIENT_ID || '',
+          authority: 'https://login.microsoftonline.com/common',
+          redirectUri: window.location.origin + '/auth/microsoft/callback'
+        },
+        cache: {
+          cacheLocation: 'sessionStorage',
+          storeAuthStateInCookie: true
+        }
+      };
+      
+      const msalInstance = new window.msal.PublicClientApplication(msalConfig);
+      
+      // Login request
+      const loginRequest = {
+        scopes: ["user.read", "mail.read", "openid", "profile", "email"]
+      };
+      
+      // Trigger Microsoft login
+      msalInstance.loginPopup(loginRequest)
+        .then(function(loginResponse) {
+          const accessToken = loginResponse.accessToken;
+          
+          // Fetch user profile from Microsoft Graph API
+          fetch('https://graph.microsoft.com/v1.0/me', {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + accessToken
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              reject(new Error(data.error.message || 'Failed to fetch profile'));
+              return;
+            }
+            
+            // Get user photo if available
+            fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
+              method: 'GET',
+              headers: {
+                'Authorization': 'Bearer ' + accessToken
+              }
+            })
+            .then(photoResponse => {
+              let imageUrl = '';
+              
+              if (photoResponse.ok) {
+                imageUrl = URL.createObjectURL(photoResponse.blob());
+              }
+              
+              // Prepare data for API call
+              const userData = {
+                full_name: data.displayName,
+                username: data.userPrincipalName,
+                email: data.mail || data.userPrincipalName,
+                ms_id: data.id,
+                image_url: imageUrl,
+                task: 'signin'
+              };
+              
+              // Send data to API
+              registerSocialUser(userData)
+                .then(() => resolve())
+                .catch((error) => reject(error));
+            })
+            .catch(() => {
+              // Continue even if photo fetch fails
+              const userData = {
+                full_name: data.displayName,
+                username: data.userPrincipalName,
+                email: data.mail || data.userPrincipalName,
+                ms_id: data.id,
+                task: 'signin'
+              };
+              
+              registerSocialUser(userData)
+                .then(() => resolve())
+                .catch((error) => reject(error));
+            });
+          })
+          .catch(error => {
+            console.error('Error fetching Microsoft profile:', error);
+            reject(error);
+          });
+        })
+        .catch(function(error) {
+          console.error('Microsoft login failed:', error);
+          reject(error);
+        });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Handle Apple Authentication
+ */
+const handleAppleAuth = async (): Promise<void> => {
+  // Load Apple Sign In JS
+  if (!document.getElementById('apple-signin-script')) {
+    const script = document.createElement('script');
+    script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
+    script.id = 'apple-signin-script';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+    
+    await new Promise((resolve, reject) => {
+      script.onload = resolve;
+      script.onerror = reject;
+    });
+  }
+  
+  return new Promise((resolve, reject) => {
+    try {
+      if (!window.AppleID) {
+        reject(new Error('Apple Sign In JS not available'));
+        return;
+      }
+      
+      // Get the domain from current URL
+      const parsedUrl = new URL(window.location.href);
+      const protocolAndDomain = parsedUrl.origin;
+      
+      // Initialize Apple Sign-In
+      window.AppleID.auth.init({
+        clientId: process.env.REACT_APP_APPLE_SERVICE_ID || '',
+        redirectURI: protocolAndDomain,
+        usePopup: true
+      });
+      
+      // Trigger Apple sign-in
+      window.AppleID.auth.signIn()
+        .then(function(response) {
+          const idToken = response.authorization.id_token;
+          const userData = parseJwt(idToken);
+          
+          if (!userData) {
+            reject(new Error('Failed to parse Apple ID token'));
+            return;
+          }
+          
+          // Prepare API data
+          const postData: Record<string, any> = {
+            email: userData.email,
+            app_id: userData.sub,
+            task: 'signup' // Using 'signup' as specified in your cURL example
+          };
+          
+          // Add full name if available
+          const fullName = response.user ? response.user.name : null;
+          if (fullName) {
+            postData.full_name = `${fullName.firstName} ${fullName.lastName}`;
+          }
+          
+          // Send data to API
+          registerSocialUser(postData)
+            .then(() => resolve())
+            .catch((error) => reject(error));
+        })
+        .catch(function(error) {
+          console.error('Apple Sign-In Error:', error);
+          reject(error);
+        });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Parse JWT token (used by Google and Apple authentication)
+ */
+const parseJwt = (token: string) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64).split('').map(c => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error('Error parsing JWT token:', e);
+    return null;
+  }
+};
+
+/**
+ * Register user with social login data
+ * This function sends the collected user data to your API endpoint
+ */
+const registerSocialUser = async (data: Record<string, any>): Promise<void> => {
+  try {
+    console.log('Registering with social data:', data);
+    
+    // Add UTM parameters if available
+    const utmParams = getUTMParams();
+    const postData = { ...data, ...utmParams };
+    
+    // Make API call to register user
+    const response = await fetch(`${API_BASE_URL}/app/social_register_user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(postData).toString()
+    });
+    
+    const responseText = await response.text();
+    let responseData;
+    
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', responseText);
+      throw new Error('Invalid response format');
+    }
+    
+    if (responseData.status) {
+      // Store authentication data
+      if (responseData.token) {
+        await storeToken(responseData.token);
+      }
+      if (responseData.refresh_token) {
+        await storeRefreshToken(responseData.refresh_token);
+      }
+      
+      if (responseData.user) {
+        await storeUser(responseData.user);
+      }
+      
+      return Promise.resolve();
+    } else {
+      return Promise.reject(new Error(responseData.message || 'Registration failed'));
+    }
+  } catch (error) {
+    console.error('Social registration error:', error);
+    return Promise.reject(error);
+  }
+};
+
+/**
+ * Get UTM parameters from cookies
+ */
+const getUTMParams = () => {
+  const getCookie = (name: string) => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i].trim();
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length);
+    }
+    return undefined;
+  };
+
+  const utm_medium = getCookie("utm_medium");
+  const utm_source = getCookie("utm_source");
+  const utm_campaign = getCookie("utm_campaign");
+
+  const utm_param_obj: Record<string, string> = {};
+  
+  if (utm_medium) utm_param_obj["utm_medium"] = encodeURIComponent(utm_medium);
+  if (utm_source) utm_param_obj["utm_source"] = encodeURIComponent(utm_source);
+  if (utm_campaign) utm_param_obj["utm_campaign"] = encodeURIComponent(utm_campaign);
+  
+  return utm_param_obj;
 };
 
 // Phone authentication - request OTP
@@ -160,9 +628,11 @@ export const verifyPhoneOTP = async (phoneNumber: string, otp: string, sessionId
       
       // Extract token
       const token = apiResponse.data.access_token || '';
+      const refreshToken = apiResponse.data.refresh_token || '';
       
       // Store authentication data
       await storeToken(token);
+      await storeRefreshToken(refreshToken);
       await storeUser(userData);
       
       return {
@@ -178,3 +648,16 @@ export const verifyPhoneOTP = async (phoneNumber: string, otp: string, sessionId
     throw error;
   }
 };
+
+// Type definitions to extend Window interface
+declare global {
+  interface Window {
+    google?: any;
+    FB?: any;
+    msal?: any;
+    msalInstance?: any;
+    AppleID?: any;
+    handleCredentialResponse?: (response: any) => void;
+    fbAsyncInit?: () => void;
+  }
+}

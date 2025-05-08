@@ -173,6 +173,7 @@ const Profile: React.FC<ProfileProps> = ({
               type="button"
               variant="outline"
               onClick={() => setIsEditMode(true)}
+              fullWidth
             >
               Edit Profile
             </Button>

@@ -14,6 +14,7 @@ export interface User {
 
 export interface AuthResponse {
   token: string;
+  refreshToken: string;
   user: User;
 }
 
@@ -57,6 +58,10 @@ export const storeToken = async (token: string): Promise<void> => {
   }
 };
 
+export const storeRefreshToken = async (token: string): Promise<void> => {
+  await chrome.storage.local.set({ refreshToken: token });
+};
+
 // Store user in Chrome storage
 export const storeUser = async (user: User): Promise<void> => {
   await chrome.storage.local.set({ user });
@@ -66,6 +71,11 @@ export const storeUser = async (user: User): Promise<void> => {
 export const getToken = async (): Promise<string | null> => {
   const result = await chrome.storage.local.get('authToken');
   return result.authToken || null;
+};
+
+export const getRefreshToken = async (): Promise<string | null> => {
+  const result = await chrome.storage.local.get('refreshToken');
+  return result.refreshToken || null;
 };
 
 // Get user from Chrome storage
@@ -95,6 +105,7 @@ const transformApiResponse = (apiResponse: ApiResponse): AuthResponse => {
   const phoneNumber = data.phone_number || undefined;
   const isSubscribed = !!data.is_subscribed;
   const accessToken = data.access_token || '';
+  const refreshToken = data.refresh_token || '';
   
   // Create user object from API data
   const user: User = {
@@ -110,6 +121,7 @@ const transformApiResponse = (apiResponse: ApiResponse): AuthResponse => {
   // Create auth response
   return {
     token: accessToken,
+    refreshToken: refreshToken,
     user
   };
 };
@@ -177,6 +189,7 @@ export const signUp = async (username: string, email: string, password: string):
     
     // Store authentication data
     await storeToken(authResponse.token);
+    await storeRefreshToken(authResponse.refreshToken);
     await storeUser(authResponse.user);
     
     return authResponse;
@@ -248,6 +261,7 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
     
     // Store authentication data
     await storeToken(authResponse.token);
+    await storeRefreshToken(authResponse.refreshToken);
     await storeUser(authResponse.user);
     
     return authResponse;
@@ -423,44 +437,83 @@ export const resetPassword = async (token: string, password: string): Promise<bo
 };
 
 // Get chat history for the authenticated user
-export const getChatHistory = async (): Promise<any[]> => {
+export const getChatHistory = async (): Promise<any> => {
   const token = await getToken();
+  const refreshtoken = await getRefreshToken();
+  
   if (!token) {
     throw new Error('Not authenticated');
   }
-  
+
   const user = await getUser();
+  
   if (!user) {
     throw new Error('User data not found');
   }
-  
+
   try {
-    // Create form data
-    const formData = new URLSearchParams();
-    formData.append('uid', user.id);
-    
-    // Make API request to get chat history
-    const response = await fetch(`${API_BASE_URL}/user/history`, {
-      method: 'POST',
+    const response = await fetch(`https://api.search.com/app/get_user_history/1`, {
+      method: 'GET',
+      credentials: 'include', // To include cookies like ci_session, username
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`, // Ensure this matches your actual token name
+        'X-Refresh-Token': `${refreshtoken}`, // Include refresh token if required
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
       },
-      body: formData.toString(),
     });
-    
-    // Parse response
+
     const apiResponse = await response.json();
-    
-    // Check for API errors
-    if (apiResponse.success === false || apiResponse.success === 0) {
-      throw extractErrorMessage(apiResponse);
+    console.log(apiResponse);
+
+    // Case 1: Access token was refreshed
+    if (apiResponse.status === 'success' && apiResponse.access_token) {
+      // Store the new access token
+      await storeToken(apiResponse.access_token);
+      
+      // Call getChatHistory again to use the new token (recursive call)
+      return await getChatHistory();  // Recursive call after token update
     }
-    
-    // Return chat history
-    return apiResponse.data || [];
+
+    // Case 2: If `response` exists and has arrays like Today, Yesterday, etc.
+    if (apiResponse.status === 'success' && apiResponse.response) {
+      const chatHistory = [];
+
+      // Loop through the response categories (e.g., Today, Yesterday)
+      Object.keys(apiResponse.response).forEach((category) => {
+        const chats = apiResponse.response[category];
+        
+        // Check if each category is an array
+        if (Array.isArray(chats)) {
+          chats.forEach((chat: any) => {
+            chatHistory.push({
+              id: chat.id || chat.chatId,
+              title: chat.name || `Chat from ${new Date(chat.created_at).toLocaleString()}`,
+              lastMessage: chat.first_message || 'No messages',
+              timestamp: chat.created_at || chat.timestamp,
+              messages: chat.messages || []
+            });
+          });
+        }
+      });
+
+      // Sort by timestamp (newest first)
+      chatHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return chatHistory;
+    }
+
+    // Case 3: If the response doesn't match either, throw an error
+    throw new Error(apiResponse.message || 'Failed to fetch chat history');
+
   } catch (error) {
     console.error('Get chat history error:', error);
     throw error;
   }
 };
+
+
+
+
+
+

@@ -1,6 +1,8 @@
+// First, let's modify src/pages/panel/components/SideIcons.tsx
 import React from 'react';
 import { 
   ChatBubbleLeftIcon,
+  ClockIcon, // Add this for history icon
   PencilSquareIcon, 
   MagnifyingGlassIcon, 
   PhotoIcon, 
@@ -10,8 +12,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface SideIconsProps {
-  currentView: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile';
-  onViewChange: (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile') => void;
+  currentView: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile' | 'history'; // Add 'history'
+  onViewChange: (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile' | 'history') => void; // Add 'history'
   isAuthenticated: boolean;
 }
 
@@ -20,8 +22,22 @@ const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuth
     `p-2 rounded ${currentView === view ? 'bg-gray-100' : 'hover:bg-gray-100'}`;
 
   return (
-    <div className="flex flex-col items-center py-4 bg-white border-l border-gray-200">
+    <div className="flex flex-col items-center py-4 px-3 bg-white border-l border-gray-200 max-w-[220px]">
       <div className="flex flex-col gap-6 mt-4">
+        {/* Only show history icon when logged in */}
+        {isAuthenticated && (
+          <div className="flex flex-col items-center">
+            <button 
+              className={iconClasses('history')} 
+              title="History"
+              onClick={() => onViewChange('history')}
+            >
+              <ClockIcon className="w-6 h-6" />
+            </button>
+            <span className="text-xs mt-1">History</span>
+          </div>
+        )}
+        
         <div className="flex flex-col items-center">
           <button 
             className={iconClasses('chat')} 
@@ -45,7 +61,7 @@ const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuth
           <span className="text-xs mt-1">{isAuthenticated ? "Profile" : "Sign In"}</span>
         </div>
         
-        <div className="flex flex-col items-center">
+        {/* <div className="flex flex-col items-center">
           <button 
             className="p-2 hover:bg-gray-100 rounded" 
             title="Full Page"
@@ -57,7 +73,7 @@ const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuth
             <ArrowsPointingOutIcon className="w-6 h-6" />
           </button>
           <span className="text-xs mt-1">Full Page</span>
-        </div>
+        </div> */}
       </div>
     </div>
   );

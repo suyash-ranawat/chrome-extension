@@ -1,3 +1,4 @@
+// Update src/pages/panel/App.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { sendChatMessage } from '@/services/api';
 import TopNavigation from './components/TopNavigation';
@@ -7,6 +8,7 @@ import InputArea from './components/InputArea';
 import SuggestedPrompts from './components/SuggestedPrompts';
 import Auth from './components/auth/Auth';
 import Profile from './components/auth/Profile';
+import HistoryView from './components/HistoryView'; // Import the new component
 import useAuth from '@/hooks/useAuth';
 
 export interface Message {
@@ -21,6 +23,7 @@ const App: React.FC = () => {
     isLoading,
     signOut,
     updateProfile,
+    getChatHistory, // Use this to get chat history
     error: authError
   } = useAuth();
 
@@ -29,8 +32,19 @@ const App: React.FC = () => {
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [showSuggestions, setShowSuggestions] = useState(true);
-  const [currentView, setCurrentView] = useState<'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile' | 'history'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // This effect will run whenever isAuthenticated changes
+    // It ensures components re-render with the latest auth state
+    console.log('Authentication state changed:', isAuthenticated);
+    
+    // If user just logged in and has a current chat ID, we should load their chat history
+    if (isAuthenticated && currentChatId) {
+      // Optionally refresh chat data here if needed
+    }
+  }, [isAuthenticated]);
 
   // Retrieve current chat ID from localStorage on component mount
   useEffect(() => {
@@ -91,6 +105,50 @@ const App: React.FC = () => {
     }
   };
 
+  // Handle selecting a chat from history
+  const handleSelectChat = async (chatId: string) => {
+    // Store the selected chat ID
+    setCurrentChatId(chatId);
+    localStorage.setItem('currentChatId', chatId);
+    
+    // Clear current messages
+    setMessages([]);
+    setIsMessageLoading(true);
+    
+    try {
+      // Fetch chat messages for this chat ID
+      const { response } = await sendChatMessage('', chatId);
+      
+      // Set the messages if available
+      if (response) {
+        // Parse the chat content - this depends on the API response structure
+        // This is a simplified example; you may need to adapt based on your API
+        try {
+          const parsedContent = JSON.parse(response);
+          if (Array.isArray(parsedContent)) {
+            setMessages(parsedContent);
+          } else if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
+            setMessages(parsedContent.messages);
+          } else {
+            // If response is not in the expected format, show it as a single message
+            setMessages([{ role: 'assistant', content: response }]);
+          }
+        } catch (parseError) {
+          // If parsing fails, just display the raw response as a message
+          setMessages([{ role: 'assistant', content: response }]);
+        }
+      }
+      
+      // Switch to chat view
+      setCurrentView('chat');
+    } catch (error) {
+      console.error('Error loading chat:', error);
+      setMessages([{ role: 'assistant', content: 'Error loading chat history.' }]);
+    } finally {
+      setIsMessageLoading(false);
+    }
+  };
+
   // Handle sign out
   const handleSignOut = async () => {
     try {
@@ -114,7 +172,7 @@ const App: React.FC = () => {
   };
 
   // Switch between different views
-  const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile') => {
+  const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile' | 'history') => {
     setCurrentView(view);
   };
 
@@ -160,10 +218,28 @@ const App: React.FC = () => {
     );
   }
 
+  // History view
+  if (currentView === 'history') {
+    return (
+      <div className="flex h-full">
+        <div className="flex-1">
+          <HistoryView 
+            onSelectChat={handleSelectChat}
+          />
+        </div>
+        <SideIcons 
+          currentView={currentView} 
+          onViewChange={changeView} 
+          isAuthenticated={isAuthenticated} 
+        />
+      </div>
+    );
+  }
+
   // Main chat interface
   return (
     <div className="flex h-full">
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-full max-w-[calc(100%-10px)]">
         <TopNavigation 
           onNewConversation={handleNewConversation} 
           isAuthenticated={isAuthenticated}
