@@ -1,5 +1,3 @@
-// src/hooks/useAuth.ts
-
 import { useState, useEffect, useCallback } from 'react';
 import { 
   User, 
@@ -20,6 +18,13 @@ import {
   verifyPhoneOTP
 } from '@/services/socialAuth';
 
+import {
+  getUserState,
+  getAuthState,
+  setAuthState,
+  subscribeToAuthChanges
+} from '@/store/authStore';
+
 interface UseAuthReturn {
   user: User | null;
   isAuthenticated: boolean;
@@ -32,7 +37,11 @@ interface UseAuthReturn {
   socialLogin: (provider: SocialProvider) => Promise<void>;
   phoneLogin: {
     requestOTP: (phoneNumber: string) => Promise<string>;
-    verifyOTP: (phoneNumber: string, otp: string, sessionId: string) => Promise<void>;
+    verifyOTP: (
+      phoneNumber: string,
+      otp: string,
+      sessionId: string
+    ) => Promise<void>;
   };
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (token: string, password: string) => Promise<boolean>;
@@ -41,8 +50,8 @@ interface UseAuthReturn {
 }
 
 export function useAuth(): UseAuthReturn {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(getUserState());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(getAuthState());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,262 +60,240 @@ export function useAuth(): UseAuthReturn {
     setError(null);
   }, []);
 
-  // Check if user is authenticated on component mount
+  // Sync state whenever the auth state changes globally
+  useEffect(() => {
+    const sync = () => {
+      setUser(getUserState());
+      setIsAuthenticated(getAuthState());
+    };
+    const unsubscribe = subscribeToAuthChanges(sync);
+    return unsubscribe;
+  }, []);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('Checking authentication...');
         setIsLoading(true);
         const token = await getToken();
         
         if (token) {
-          console.log('Token found, fetching user data...');
-          try {
-            const userData = await getUser();
-            if (userData) {
-              console.log('User authenticated successfully');
-              setUser(userData);
-              setIsAuthenticated(true);
-            } else {
-              console.log('User data not found despite having token');
-              setUser(null);
-              setIsAuthenticated(false);
-            }
-          } catch (userError) {
-            console.error('Error fetching user data:', userError);
-            setUser(null);
-            setIsAuthenticated(false);
+          const userData = await getUser();
+          if (userData) {
+            setAuthState(userData, true);
+          } else {
+            setAuthState(null, false);
           }
         } else {
-          console.log('No authentication token found');
-          setUser(null);
-          setIsAuthenticated(false);
+          setAuthState(null, false);
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
-        setUser(null);
-        setIsAuthenticated(false);
-        setError(error instanceof Error ? error.message : 'Failed to check authentication status');
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to check authentication status"
+        );
+        setAuthState(null, false);
       } finally {
         setIsLoading(false);
       }
     };
-
     checkAuth();
   }, []);
 
-  // Sign in handler
-  const signIn = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    clearError();
-    try {
-      console.log('Attempting to sign in...');
-      const data = await apiSignIn(email, password);
-      console.log('Sign in successful');
-      setUser(data.user);
-      setIsAuthenticated(true);
-      broadcastAuthChange(true);
-    } catch (error) {
-      console.error('Sign in failed:', error);
-      setError(error instanceof Error ? error.message : 'Sign in failed');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
-
-  // Sign up handler
-  const signUp = useCallback(async (username: string, email: string, password: string) => {
-    setIsLoading(true);
-    clearError();
-    try {
-      console.log('Attempting to sign up...');
-      const data = await apiSignUp(username, email, password);
-      console.log('Sign up successful');
-      setUser(data.user);
-      setIsAuthenticated(true);
-      broadcastAuthChange(true);
-    } catch (error) {
-      console.error('Sign up failed:', error);
-      setError(error instanceof Error ? error.message : 'Sign up failed');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
-
-  // Sign out handler
-  const signOut = useCallback(async () => {
-    setIsLoading(true);
-    clearError();
-    try {
-      console.log('Signing out...');
-      await apiSignOut();
-      setUser(null);
-      setIsAuthenticated(false);
-      broadcastAuthChange(false);
-      console.log('Sign out successful');
-    } catch (error) {
-      console.error('Sign out failed:', error);
-      setError(error instanceof Error ? error.message : 'Sign out failed');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
-
-  // Update profile handler
-  const updateProfile = useCallback(async (userData: Partial<User>) => {
-    setIsLoading(true);
-    clearError();
-    try {
-      console.log('Updating profile...');
-      const updatedUser = await apiUpdateProfile(userData);
-      setUser(updatedUser);
-      console.log('Profile updated successfully');
-    } catch (error) {
-      console.error('Profile update failed:', error);
-      setError(error instanceof Error ? error.message : 'Profile update failed');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
-
-  // Social login handler
-  const socialLogin = useCallback(async (provider: SocialProvider) => {
-    setIsLoading(true);
-    clearError();
-    try {
-      console.log(`Initiating ${provider} login...`);
-      await initiateSocialLogin(provider);
-      
-      // After successful social login, refresh the user data
-      const userData = await getUser();
-      if (userData) {
-        console.log('Social login successful');
-        setUser(userData);
-        setIsAuthenticated(true);
-      } else {
-        throw new Error('Failed to get user data after social login');
-      }
-    } catch (error) {
-      console.error(`${provider} login failed:`, error);
-      setError(error instanceof Error ? error.message : `${provider} login failed`);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
-
-  // Phone login handlers
-  const phoneLogin = {
-    requestOTP: async (phoneNumber: string): Promise<string> => {
+  const signIn = useCallback(
+    async (email: string, password: string) => {
       setIsLoading(true);
       clearError();
       try {
-        console.log('Requesting OTP for phone login...');
-        const sessionId = await requestPhoneOTP(phoneNumber);
-        console.log('OTP sent successfully');
-        return sessionId;
+        const data = await apiSignIn(email, password);
+        setAuthState(data.user, true);  // Update global auth state
+        broadcastAuthChange(true);
       } catch (error) {
-        console.error('Phone OTP request failed:', error);
-        setError(error instanceof Error ? error.message : 'Failed to send OTP');
+        setError(error instanceof Error ? error.message : "Sign in failed");
         throw error;
       } finally {
         setIsLoading(false);
       }
     },
-    
-    verifyOTP: async (phoneNumber: string, otp: string, sessionId: string): Promise<void> => {
+    [clearError]
+  );
+
+  const signUp = useCallback(
+    async (username: string, email: string, password: string) => {
       setIsLoading(true);
       clearError();
       try {
-        console.log('Verifying OTP...');
-        const result = await verifyPhoneOTP(phoneNumber, otp, sessionId);
-        console.log('OTP verification successful');
-        setUser(result.user);
-        setIsAuthenticated(true);
+        const data = await apiSignUp(username, email, password);
+        setAuthState(data.user, true);
+        broadcastAuthChange(true);
       } catch (error) {
-        console.error('Phone OTP verification failed:', error);
-        setError(error instanceof Error ? error.message : 'OTP verification failed');
+        setError(error instanceof Error ? error.message : "Sign up failed");
         throw error;
       } finally {
         setIsLoading(false);
       }
+    },
+    [clearError]
+  );
+
+  const signOut = useCallback(async () => {
+    setIsLoading(true);
+    clearError();
+    try {
+      await apiSignOut();
+      setAuthState(null, false);  // Update global auth state
+      broadcastAuthChange(false);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Sign out failed");
+    } finally {
+      setIsLoading(false);
     }
+  }, [clearError]);
+
+  const updateProfile = useCallback(
+    async (userData: Partial<User>) => {
+      setIsLoading(true);
+      clearError();
+      try {
+        const updatedUser = await apiUpdateProfile(userData);
+        setAuthState(updatedUser, true); // Update global auth state
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "Profile update failed"
+        );
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [clearError]
+  );
+
+  const socialLogin = useCallback(
+    async (provider: SocialProvider) => {
+      setIsLoading(true);
+      clearError();
+      try {
+        await initiateSocialLogin(provider);
+        const userData = await getUser();
+        if (userData) {
+          setAuthState(userData, true); // Update global auth state
+        } else {
+          throw new Error("Failed to get user data after social login");
+        }
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : `${provider} login failed`
+        );
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [clearError]
+  );
+
+  const phoneLogin = {
+    requestOTP: async (phoneNumber: string): Promise<string> => {
+      setIsLoading(true);
+      clearError();
+      try {
+        return await requestPhoneOTP(phoneNumber);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Failed to send OTP");
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+
+    verifyOTP: async (
+      phoneNumber: string,
+      otp: string,
+      sessionId: string
+    ): Promise<void> => {
+      setIsLoading(true);
+      clearError();
+      try {
+        const result = await verifyPhoneOTP(phoneNumber, otp, sessionId);
+        setAuthState(result.user, true); // Update global auth state
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "OTP verification failed"
+        );
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
   };
 
-  // Password reset functionality
-  const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-    setIsLoading(true);
-    clearError();
-    try {
-      console.log('Requesting password reset...');
-      const success = await apiRequestPasswordReset(email);
-      console.log('Password reset email sent successfully');
-      return success;
-    } catch (error) {
-      console.error('Password reset request failed:', error);
-      setError(error instanceof Error ? error.message : 'Failed to request password reset');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
+  const requestPasswordReset = useCallback(
+    async (email: string): Promise<boolean> => {
+      setIsLoading(true);
+      clearError();
+      try {
+        return await apiRequestPasswordReset(email);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to request password reset"
+        );
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [clearError]
+  );
 
-  const resetPassword = useCallback(async (token: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    clearError();
-    try {
-      console.log('Resetting password...');
-      const success = await apiResetPassword(token, password);
-      console.log('Password reset successful');
-      return success;
-    } catch (error) {
-      console.error('Password reset failed:', error);
-      setError(error instanceof Error ? error.message : 'Failed to reset password');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
+  const resetPassword = useCallback(
+    async (token: string, password: string): Promise<boolean> => {
+      setIsLoading(true);
+      clearError();
+      try {
+        return await apiResetPassword(token, password);
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "Failed to reset password"
+        );
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [clearError]
+  );
 
-  // Get chat history
   const getChatHistory = useCallback(async (): Promise<any[]> => {
-    if (!isAuthenticated) {
-      console.log('User not authenticated, cannot fetch chat history');
-      return [];
-    }
-    
+    if (!isAuthenticated) return [];
     clearError();
     try {
-      console.log('Fetching chat history...');
-      const history = await apiGetChatHistory();
-      console.log('Chat history fetched successfully');
-      return history;
+      return await apiGetChatHistory();
     } catch (error) {
-      console.error('Failed to fetch chat history:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch chat history');
+      setError(
+        error instanceof Error ? error.message : "Failed to fetch chat history"
+      );
       return [];
     }
   }, [isAuthenticated, clearError]);
 
-  // Add a function to broadcast auth state changes
   const broadcastAuthChange = (state: boolean) => {
-    // Notify background script
     try {
       chrome.runtime.sendMessage({
-        type: 'AUTH_STATE_CHANGED',
-        isAuthenticated: state
+        type: "AUTH_STATE_CHANGED",
+        isAuthenticated: state,
       });
     } catch (error) {
-      console.error('Failed to notify about auth state change:', error);
+      console.error("Failed to notify about auth state change:", error);
     }
-    
-    // Optionally dispatch a custom event for components to listen to
-    document.dispatchEvent(new CustomEvent('auth_state_changed', {
-      detail: { isAuthenticated: state }
-    }));
+
+    document.dispatchEvent(
+      new CustomEvent("auth_state_changed", {
+        detail: { isAuthenticated: state },
+      })
+    );
   };
 
   return {
@@ -323,7 +310,7 @@ export function useAuth(): UseAuthReturn {
     requestPasswordReset,
     resetPassword,
     getChatHistory,
-    clearError
+    clearError,
   };
 }
 
