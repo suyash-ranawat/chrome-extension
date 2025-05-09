@@ -29,6 +29,17 @@ export const ContentScriptComponent = () => {
     console.log('Search Query:', qParam);
   }, []);
 
+
+  const getExtensionUrl = (path: string): string => {
+    // Check if chrome.runtime is available
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+      return chrome.runtime.getURL(path);
+    }
+    
+    // Fallback for development environment
+    return `/${path}`;
+  };
+
   const handleAskClick = async (customPrompt?: string) => {
     setLoading(true);
     try {
@@ -84,18 +95,13 @@ export const ContentScriptComponent = () => {
           borderBottom: analysisResult ? '1px solid #e0e0e0' : 'none'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg width="24" height="24" viewBox="0 0 41 41" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20.5" cy="20.5" r="20.5" fill="#10A37F"/>
-              <path d="M12.6364 20.7649C12.6364 16.7281 15.9155 13.449 19.9523 13.449C23.9891 13.449 27.2682 16.7281 27.2682 20.7649C27.2682 24.8017 23.9891 28.0808 19.9523 28.0808C15.9155 28.0808 12.6364 24.8017 12.6364 20.7649Z" stroke="white" strokeWidth="2.5"/>
-              <path d="M20.4523 13.449V10" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M27.4523 20.5L30.9045 20.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M20.4523 31.5V28.0808" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M13.4523 20.5L10 20.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M25.5001 15.4019L28.0001 13" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M25.5001 26.098L28.0001 28.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M15.5001 26.098L13.0001 28.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M15.5001 15.4019L13.0001 13" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
+          <img 
+            src={getExtensionUrl("icons/icon128.png")} 
+            width="24" 
+            height="24" 
+            alt="Search.com Logo" 
+            style={{ borderRadius: '50%' }}
+          />
             <span style={{ fontWeight: 500, color: '#333', fontSize: '14px' }}><em>SearchGPT Sidebar</em></span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
