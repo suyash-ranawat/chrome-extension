@@ -436,7 +436,6 @@ export const resetPassword = async (token: string, password: string): Promise<bo
   }
 };
 
-// Get chat history for the authenticated user
 export const getChatHistory = async (): Promise<any> => {
   const token = await getToken();
   const refreshtoken = await getRefreshToken();
@@ -464,7 +463,6 @@ export const getChatHistory = async (): Promise<any> => {
     });
 
     const apiResponse = await response.json();
-    console.log(apiResponse);
 
     // Case 1: Access token was refreshed
     if (apiResponse.access_token) {
@@ -477,28 +475,42 @@ export const getChatHistory = async (): Promise<any> => {
 
     // Case 2: If `response` exists and has arrays like Today, Yesterday, etc.
     if (apiResponse.status === 'success' && apiResponse.response) {
-      const chatHistory = [];
+      const chatHistory: any = {
+        Yesterday: [],
+        "Previous 7 Days": []
+      };
 
-      // Loop through the response categories (e.g., Today, Yesterday)
+      // Loop through the response categories (e.g., Yesterday, Previous 7 Days)
       Object.keys(apiResponse.response).forEach((category) => {
         const chats = apiResponse.response[category];
         
         // Check if each category is an array
         if (Array.isArray(chats)) {
           chats.forEach((chat: any) => {
-            chatHistory.push({
+            const formattedChat = {
               id: chat.id || chat.chatId,
-              title: chat.name || `Chat from ${new Date(chat.created_at).toLocaleString()}`,
-              lastMessage: chat.first_message || 'No messages',
-              timestamp: chat.created_at || chat.timestamp,
+              name: chat.name || `Chat from ${new Date(chat.created_at).toLocaleString()}`,
+              first_message: chat.first_message || 'No messages',
+              message_count: chat.message_count || 0,
+              created_at: chat.created_at || chat.timestamp,
+              updated_at: chat.updated_at,
+              last_updated: chat.last_updated,
               messages: chat.messages || []
-            });
+            };
+
+            // Add chat to appropriate category
+            if (category === 'Yesterday') {
+              chatHistory.Yesterday.push(formattedChat);
+            } else if (category === 'Previous 7 Days') {
+              chatHistory["Previous 7 Days"].push(formattedChat);
+            }
           });
         }
       });
 
-      // Sort by timestamp (newest first)
-      chatHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      // Sort by timestamp (newest first) within each category
+      chatHistory.Yesterday.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      chatHistory["Previous 7 Days"].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       return chatHistory;
     }
@@ -511,8 +523,6 @@ export const getChatHistory = async (): Promise<any> => {
     throw error;
   }
 };
-
-
 
 
 

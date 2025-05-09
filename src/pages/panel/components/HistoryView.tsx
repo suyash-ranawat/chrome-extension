@@ -7,14 +7,16 @@ interface HistoryViewProps {
 
 interface ChatHistoryItem {
   id: string;
-  title: string;
-  lastMessage: string;
-  timestamp: string;
-  messages?: any[];
+  name: string;
+  first_message: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+  last_updated: number;
 }
 
 const HistoryView: React.FC<HistoryViewProps> = ({ onSelectChat }) => {
-  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+  const [chatHistory, setChatHistory] = useState<any>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -26,9 +28,9 @@ const HistoryView: React.FC<HistoryViewProps> = ({ onSelectChat }) => {
       try {
         const history = await apiGetChatHistory();
 
-        // If history is an array, set it
-        if (Array.isArray(history)) {
-          setChatHistory(history);
+        // Check if history is in the expected format
+        if (history && history.Yesterday && history["Previous 7 Days"]) {
+          setChatHistory(history); // Set the grouped chat history data
         } else {
           throw new Error('Invalid chat history format');
         }
@@ -73,8 +75,8 @@ const HistoryView: React.FC<HistoryViewProps> = ({ onSelectChat }) => {
     );
   }
 
-  // Empty state
-  if (chatHistory.length === 0) {
+  // Empty state when no chat data is available
+  if (!chatHistory.Yesterday && !chatHistory["Previous 7 Days"]) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-gray-500">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -93,32 +95,63 @@ const HistoryView: React.FC<HistoryViewProps> = ({ onSelectChat }) => {
     }
     return text;
   };
-  // Chat history list view
+
+  // Render history grouped under headings (Yesterday, Previous 7 Days)
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-xl font-semibold">Chat History</h2>
         <p className="text-sm text-gray-500">Select a chat to continue the conversation</p>
       </div>
-      
-      <div className="flex-1 overflow-auto">
-        {chatHistory.map((chat) => (
-          <div 
-            key={chat.id}
-            className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedChatId === chat.id ? 'bg-gray-100' : ''}`}
-            onClick={() => handleChatSelect(chat.id)}
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h3 className="font-medium truncate">{truncateText(chat.title, 30)}</h3>
-                <p className="text-sm text-gray-500 truncate">{truncateText(chat.lastMessage, 30)}</p>
+
+      <div className="flex-1 overflow-auto p-4">
+        {/* Yesterday Chats */}
+        {chatHistory.Yesterday && chatHistory.Yesterday.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-700">Yesterday</h3>
+            {chatHistory.Yesterday.map((chat: ChatHistoryItem) => (
+              <div 
+                key={chat.id}
+                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedChatId === chat.id ? 'bg-gray-100' : ''}`}
+                onClick={() => handleChatSelect(chat.id)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-medium truncate">{truncateText(chat.name, 30)}</h3>
+                    <p className="text-sm text-gray-500 truncate">{truncateText(chat.first_message, 30)}</p>
+                  </div>
+                  <div className="text-xs text-gray-400 whitespace-nowrap ml-4">
+                    {new Date(chat.created_at).toLocaleDateString()}
+                  </div>
+                </div>
               </div>
-              <div className="text-xs text-gray-400 whitespace-nowrap ml-4">
-                {new Date(chat.timestamp).toLocaleDateString()}
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
+
+        {/* Previous 7 Days Chats */}
+        {chatHistory["Previous 7 Days"] && chatHistory["Previous 7 Days"].length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-700">Previous 7 Days</h3>
+            {chatHistory["Previous 7 Days"].map((chat: ChatHistoryItem) => (
+              <div 
+                key={chat.id}
+                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedChatId === chat.id ? 'bg-gray-100' : ''}`}
+                onClick={() => handleChatSelect(chat.id)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-medium truncate">{truncateText(chat.name, 30)}</h3>
+                    <p className="text-sm text-gray-500 truncate">{truncateText(chat.first_message, 30)}</p>
+                  </div>
+                  <div className="text-xs text-gray-400 whitespace-nowrap ml-4">
+                    {new Date(chat.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
