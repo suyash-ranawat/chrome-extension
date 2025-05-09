@@ -103,6 +103,20 @@ const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuth
             </a>
           </div>
         )}
+	
+	{/* <div className="flex flex-col items-center">
+          <button 
+            className="p-2 hover:bg-gray-100 rounded" 
+            title="Full Page"
+            onClick={() => {
+              // Implement full page functionality - could open in new tab or expand UI
+              window.open(window.location.href, '_blank');
+            }}
+          >
+            <ArrowsPointingOutIcon className="w-6 h-6" />
+          </button>
+          <span className="text-xs mt-1">Full Page</span>
+        </div> */}
 
       </div>
     </div>
