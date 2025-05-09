@@ -311,11 +311,6 @@ const handleSubmit = async (userInput: string) => {
     console.error('Error:', error);
     const errorMessages = [...newMessages, { role: 'assistant' as const, content: 'Error fetching response.' }];
     setMessages(errorMessages);
-    
-    // Save to localStorage if not authenticated
-    if (!isAuthenticated) {
-      saveChatHistoryToLocalStorage(errorMessages);
-    }
   } finally {
     setIsMessageLoading(false);
   }

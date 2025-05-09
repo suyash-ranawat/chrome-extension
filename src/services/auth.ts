@@ -275,7 +275,7 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
 export const signOut = async (): Promise<void> => {
   try {
     // Remove authentication data from storage
-    await chrome.storage.local.remove(['authToken', 'user']);
+    await chrome.storage.local.remove(['authToken', 'user', 'refreshToken']);
     
     // Notify background script
     try {

@@ -1,5 +1,5 @@
 // Update src/pages/panel/App.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sendChatMessage } from '@/services/api';
 import TopNavigation from './components/TopNavigation';
 import SideIcons from './components/SideIcons';
@@ -62,10 +62,58 @@ const App: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+
+  const saveChatHistoryToLocalStorage = (messages: Message[]) => {
+    console.log('saveChatHistoryToLocalStorage');
+    console.log(isAuthenticated);
+  if (!isAuthenticated) {
+    const formattedHistory = messages.map(msg => ({
+      message: msg.content,
+      type: msg.role
+    }));
+    console.log(formattedHistory);
+    localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
+  }
+};
+
+// Add this function to load messages from localStorage:
+const loadChatHistoryFromLocalStorage = useCallback(() => {
+  console.log('loadChatHistoryFromLocalStorage');
+  console.log(isAuthenticated);
+  if (!isAuthenticated) {
+    const savedHistory = localStorage.getItem('chatHistory');
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        const formattedMessages = parsedHistory.map((item: any) => ({
+          role: item.type as 'user' | 'assistant',
+          content: item.message
+        }));
+        setMessages(formattedMessages);
+      } catch (error) {
+        console.error('Error parsing chat history:', error);
+      }
+    }
+  }
+}, [isAuthenticated]);
+
+// Add effect to load messages on component mount:
+useEffect(() => {
+  loadChatHistoryFromLocalStorage();
+}, [loadChatHistoryFromLocalStorage]);
+
+// Add effect to save messages when they change:
+useEffect(() => {
+  if (messages.length > 0) {
+    saveChatHistoryToLocalStorage(messages);
+  }
+}, [messages, isAuthenticated]);
+
   const handleSubmit = async (userInput: string) => {
     if (!userInput.trim() || isMessageLoading) return;
 
     // Add user message to UI
+    const newMessages = [...messages, { role: 'user' as const, content: userInput }];
     setMessages(prev => [...prev, { role: 'user', content: userInput }]);
     setIsMessageLoading(true);
     setShowSuggestions(false);
@@ -77,6 +125,15 @@ const App: React.FC = () => {
       if (chatId && !currentChatId) {
         setCurrentChatId(chatId);
         localStorage.setItem('currentChatId', chatId);
+      }
+
+      // Add assistant response to UI
+      const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
+      setMessages(updatedMessages);
+      
+      // Save to localStorage if not authenticated
+      if (!isAuthenticated) {
+        saveChatHistoryToLocalStorage(updatedMessages);
       }
 
       // Add assistant response to UI
