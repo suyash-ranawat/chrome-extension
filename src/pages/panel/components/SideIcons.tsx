@@ -1,14 +1,13 @@
-// First, let's modify src/pages/panel/components/SideIcons.tsx
 import React from 'react';
-import { 
+import {
   ChatBubbleLeftIcon,
   ClockIcon, // Add this for history icon
-  PencilSquareIcon, 
-  MagnifyingGlassIcon, 
-  PhotoIcon, 
-  PaperClipIcon, 
-  ArrowsPointingOutIcon, 
-  UserCircleIcon 
+  PencilSquareIcon,
+  MagnifyingGlassIcon,
+  PhotoIcon,
+  PaperClipIcon,
+  ArrowsPointingOutIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 interface SideIconsProps {
@@ -18,7 +17,7 @@ interface SideIconsProps {
 }
 
 const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuthenticated }) => {
-  const iconClasses = (view: string) => 
+  const iconClasses = (view: string) =>
     `p-2 rounded ${currentView === view ? 'bg-gray-100' : 'hover:bg-gray-100'}`;
 
   return (
@@ -27,53 +26,84 @@ const SideIcons: React.FC<SideIconsProps> = ({ currentView, onViewChange, isAuth
         {/* Only show history icon when logged in */}
         {isAuthenticated && (
           <div className="flex flex-col items-center">
-            <button 
-              className={iconClasses('history')} 
+            <button
+              className={iconClasses('history')}
               title="History"
               onClick={() => onViewChange('history')}
             >
-              <ClockIcon className="w-6 h-6" />
+              <ClockIcon className="w-5 h-5" />
             </button>
             <span className="text-xs mt-1">History</span>
           </div>
         )}
-        
+
         <div className="flex flex-col items-center">
-          <button 
-            className={iconClasses('chat')} 
+          <button
+            className={iconClasses('chat')}
             title="Chat"
             onClick={() => onViewChange('chat')}
           >
-            <ChatBubbleLeftIcon className="w-6 h-6" />
+            <ChatBubbleLeftIcon className="w-5 h-5" />
           </button>
           <span className="text-xs mt-1">Chat</span>
         </div>
-        
+
         {/* Auth/Profile button - shows Sign In or Profile based on auth state */}
         <div className="flex flex-col items-center">
-          <button 
-            className={iconClasses(isAuthenticated ? 'profile' : 'auth')} 
+          <button
+            className={iconClasses(isAuthenticated ? 'profile' : 'auth')}
             title={isAuthenticated ? "Profile" : "Sign In"}
             onClick={() => onViewChange(isAuthenticated ? 'profile' : 'auth')}
           >
-            <UserCircleIcon className="w-6 h-6" />
+            <UserCircleIcon className="w-5 h-5" />
           </button>
           <span className="text-xs mt-1">{isAuthenticated ? "Profile" : "Sign In"}</span>
         </div>
-        
-        {/* <div className="flex flex-col items-center">
-          <button 
-            className="p-2 hover:bg-gray-100 rounded" 
-            title="Full Page"
-            onClick={() => {
-              // Implement full page functionality - could open in new tab or expand UI
-              window.open(window.location.href, '_blank');
-            }}
-          >
-            <ArrowsPointingOutIcon className="w-6 h-6" />
-          </button>
-          <span className="text-xs mt-1">Full Page</span>
-        </div> */}
+
+        {/* Cashback Icon - Only shown when logged in */}
+        {isAuthenticated && (
+          <div className="flex flex-col items-center">
+            <a
+              href="https://search.com/deals"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded hover:bg-gray-100 flex flex-col items-center justify-center"
+              title="Cashback"
+            >
+              <img
+                src="https://search.com/assets/img/search-related-icons/user-detail.svg"
+                className="w-5 h-5 mb-2" 
+                alt="Cashback Icon"
+              />
+              <span className="text-xs">Cashback</span>
+            </a>
+          </div>
+        )}
+
+        {/* Upgrade Plan Icon - Only shown when logged in */}
+        {isAuthenticated && (
+          <div className="flex flex-col items-center">
+            <a
+              href="https://search.com/landing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded hover:bg-gray-100 flex flex-col items-center justify-center"
+              title="Upgrade Plan"
+            >
+              <img
+                src="https://search.com/assets/img/search-related-icons/shortcut.svg"
+                className="w-5 h-5 mb-2" 
+                alt="Upgrade Plan Icon"
+              />
+              
+              <span className="text-xs text-center">
+                <span className="block">Upgrade</span>
+                <span className="block">Plan</span>
+              </span>
+            </a>
+          </div>
+        )}
+
       </div>
     </div>
   );
