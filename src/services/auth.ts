@@ -453,10 +453,10 @@ export const getChatHistory = async (): Promise<any> => {
   try {
     const response = await fetch(`https://api.search.com/app/get_user_history/1`, {
       method: 'GET',
-      credentials: 'include', // To include cookies like ci_session, username
+      credentials: 'include',
       headers: {
-        'Authorization': `Bearer ${token}`, // Ensure this matches your actual token name
-        'X-Refresh-Token': `${refreshtoken}`, // Include refresh token if required
+        'Authorization': `Bearer ${token}`,
+        'X-Refresh-Token': `${refreshtoken}`,
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
@@ -466,28 +466,23 @@ export const getChatHistory = async (): Promise<any> => {
 
     // Case 1: Access token was refreshed
     if (apiResponse.access_token) {
-      // Store the new access token
       await storeToken(apiResponse.access_token);
       
       // Call getChatHistory again to use the new token (recursive call)
       return await getChatHistory();  // Recursive call after token update
     }
 
-    // Case 2: If `response` exists and has arrays like Today, Yesterday, etc.
+    // Case 2: If `response` exists and has dynamic categories (e.g., Yesterday, Previous 7 Days)
     if (apiResponse.status === 'success' && apiResponse.response) {
-      const chatHistory: any = {
-        Yesterday: [],
-        "Previous 7 Days": []
-      };
+      const chatHistory: any = {};
 
-      // Loop through the response categories (e.g., Yesterday, Previous 7 Days)
+      // Loop through the response categories dynamically
       Object.keys(apiResponse.response).forEach((category) => {
         const chats = apiResponse.response[category];
         
-        // Check if each category is an array
         if (Array.isArray(chats)) {
-          chats.forEach((chat: any) => {
-            const formattedChat = {
+          chatHistory[category] = chats.map((chat: any) => {
+            return {
               id: chat.id || chat.chatId,
               name: chat.name || `Chat from ${new Date(chat.created_at).toLocaleString()}`,
               first_message: chat.first_message || 'No messages',
@@ -497,33 +492,23 @@ export const getChatHistory = async (): Promise<any> => {
               last_updated: chat.last_updated,
               messages: chat.messages || []
             };
-
-            // Add chat to appropriate category
-            if (category === 'Yesterday') {
-              chatHistory.Yesterday.push(formattedChat);
-            } else if (category === 'Previous 7 Days') {
-              chatHistory["Previous 7 Days"].push(formattedChat);
-            }
           });
         }
       });
 
-      // Sort by timestamp (newest first) within each category
-      chatHistory.Yesterday.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      chatHistory["Previous 7 Days"].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // Sort each category by created_at (newest first)
+      Object.keys(chatHistory).forEach((category) => {
+        chatHistory[category].sort(
+          (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
 
       return chatHistory;
     }
 
-    // Case 3: If the response doesn't match either, throw an error
     throw new Error(apiResponse.message || 'Failed to fetch chat history');
-
   } catch (error) {
     console.error('Get chat history error:', error);
     throw error;
   }
 };
-
-
-
-
