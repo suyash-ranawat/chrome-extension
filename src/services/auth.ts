@@ -467,7 +467,7 @@ export const getChatHistory = async (): Promise<any> => {
     console.log(apiResponse);
 
     // Case 1: Access token was refreshed
-    if (apiResponse.status === 'success' && apiResponse.access_token) {
+    if (apiResponse.access_token) {
       // Store the new access token
       await storeToken(apiResponse.access_token);
       

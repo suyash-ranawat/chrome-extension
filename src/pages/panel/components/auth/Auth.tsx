@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useAuth from '@/hooks/useAuth';
 import SignIn from './SignIn';
 import SignUp from './SignUp';
 import Profile from './Profile';
 import { SocialProvider } from '@/services/socialAuth';
 import { User } from '@/services/auth';
+import { sendChatMessage } from '@/services/api';
 
 // View types for authentication
 type AuthView = 'signin' | 'signup' | 'profile' | 'phone';
@@ -12,6 +13,11 @@ type AuthView = 'signin' | 'signup' | 'profile' | 'phone';
 interface AuthProps {
   // When authentication is complete, navigate back to chat
   onAuthComplete: () => void;
+}
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 const Auth: React.FC<AuthProps> = ({ onAuthComplete }) => {
@@ -32,6 +38,10 @@ const Auth: React.FC<AuthProps> = ({ onAuthComplete }) => {
 
   // View state
   const [currentView, setCurrentView] = useState<AuthView>('signin');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isMessageLoading, setIsMessageLoading] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
+  const [showSuggestions, setShowSuggestions] = useState(true);
 
   // Component error state (to handle UI errors that aren't from the auth hook)
   const [componentError, setComponentError] = useState<string | null>(null);
@@ -221,6 +231,95 @@ const Auth: React.FC<AuthProps> = ({ onAuthComplete }) => {
       }
     }
   };
+
+
+  const saveChatHistoryToLocalStorage = (messages: Message[]) => {
+    console.log('saveChatHistoryToLocalStorage');
+    console.log(isAuthenticated);
+  if (!isAuthenticated) {
+    const formattedHistory = messages.map(msg => ({
+      message: msg.content,
+      type: msg.role
+    }));
+    console.log(formattedHistory);
+    localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
+  }
+};
+
+// Add this function to load messages from localStorage:
+const loadChatHistoryFromLocalStorage = useCallback(() => {
+  console.log('loadChatHistoryFromLocalStorage');
+  console.log(isAuthenticated);
+  if (!isAuthenticated) {
+    const savedHistory = localStorage.getItem('chatHistory');
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        const formattedMessages = parsedHistory.map((item: any) => ({
+          role: item.type as 'user' | 'assistant',
+          content: item.message
+        }));
+        setMessages(formattedMessages);
+      } catch (error) {
+        console.error('Error parsing chat history:', error);
+      }
+    }
+  }
+}, [isAuthenticated]);
+
+// Add effect to load messages on component mount:
+useEffect(() => {
+  loadChatHistoryFromLocalStorage();
+}, [loadChatHistoryFromLocalStorage]);
+
+// Add effect to save messages when they change:
+useEffect(() => {
+  if (messages.length > 0) {
+    saveChatHistoryToLocalStorage(messages);
+  }
+}, [messages, isAuthenticated]);
+
+// Modify the handleSubmit function to save to localStorage after adding messages:
+const handleSubmit = async (userInput: string) => {
+  if (!userInput.trim() || isMessageLoading) return;
+
+  // Add user message to UI
+  const newMessages = [...messages, { role: 'user' as const, content: userInput }];
+  setMessages(newMessages);
+  setIsMessageLoading(true);
+  setShowSuggestions(false);
+  console.log(newMessages);
+
+  try {
+    const { chatId, response } = await sendChatMessage(userInput, currentChatId);
+    
+    // Update chat ID if this is a new conversation
+    if (chatId && !currentChatId) {
+      setCurrentChatId(chatId);
+      localStorage.setItem('currentChatId', chatId);
+    }
+
+    // Add assistant response to UI
+    const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
+    setMessages(updatedMessages);
+    
+    // Save to localStorage if not authenticated
+    if (!isAuthenticated) {
+      saveChatHistoryToLocalStorage(updatedMessages);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    const errorMessages = [...newMessages, { role: 'assistant' as const, content: 'Error fetching response.' }];
+    setMessages(errorMessages);
+    
+    // Save to localStorage if not authenticated
+    if (!isAuthenticated) {
+      saveChatHistoryToLocalStorage(errorMessages);
+    }
+  } finally {
+    setIsMessageLoading(false);
+  }
+};
 
   // Loading state
   if (isLoading) {

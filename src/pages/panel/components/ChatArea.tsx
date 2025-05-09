@@ -2,14 +2,21 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import classNames from 'classnames';
 import { Message } from '../App';
+import MessageActions from './MessageActions';
 
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement>;
+  onMessageUpdate: (index: number, newContent: string) => void;
 }
 
-const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, messagesEndRef }) => {
+const ChatArea: React.FC<ChatAreaProps> = ({ 
+  messages, 
+  isLoading, 
+  messagesEndRef,
+  onMessageUpdate
+}) => {
   return (
     <div className="flex-1 overflow-auto p-4 space-y-4">
       {messages.map((message, index) => (
@@ -29,10 +36,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, messagesEndRef
             )}
           >
             {message.role === 'assistant' ? (
-              <div
-                className="prose"
-                dangerouslySetInnerHTML={{ __html: message.content }}
-              />
+              <>
+                <div
+                  className="prose"
+                  dangerouslySetInnerHTML={{ __html: message.content }}
+                />
+                <MessageActions 
+                  content={message.content.replace(/<[^>]*>/g, '')} // Strip HTML tags for clean text
+                  onRewriteSuccess={(newContent) => onMessageUpdate(index, newContent)}
+                />
+              </>
             ) : (
               <ReactMarkdown className="prose">
                 {message.content}

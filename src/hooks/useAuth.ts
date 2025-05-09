@@ -1,3 +1,5 @@
+// src/hooks/useAuth.ts
+
 import { useState, useEffect, useCallback } from 'react';
 import { 
   User, 

@@ -171,6 +171,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handleMessageUpdate = (index: number, newContent: string) => {
+    setMessages(prevMessages => {
+      const updatedMessages = [...prevMessages];
+      updatedMessages[index] = {
+        ...updatedMessages[index],
+        content: newContent
+      };
+      return updatedMessages;
+    });
+  };
+
+
   // Switch between different views
   const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile' | 'history') => {
     setCurrentView(view);
@@ -254,6 +266,7 @@ const App: React.FC = () => {
             messages={messages} 
             isLoading={isMessageLoading} 
             messagesEndRef={messagesEndRef} 
+            onMessageUpdate={handleMessageUpdate}
           />
         )}
         

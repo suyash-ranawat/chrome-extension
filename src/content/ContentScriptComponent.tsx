@@ -96,7 +96,7 @@ export const ContentScriptComponent = () => {
               <path d="M15.5001 26.098L13.0001 28.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
               <path d="M15.5001 15.4019L13.0001 13" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
             </svg>
-            <span style={{ fontWeight: 500, color: '#333', fontSize: '14px' }}>Search.com Sidebar</span>
+            <span style={{ fontWeight: 500, color: '#333', fontSize: '14px' }}><em>SearchGPT Sidebar</em></span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
@@ -113,7 +113,7 @@ export const ContentScriptComponent = () => {
               }}
               disabled={loading}
             >
-              {loading ? 'Thinking...' : 'Ask AI'}
+              {loading ? 'Thinking...' : 'Ask SearchGPT'}
             </button>
           </div>
         </div>
@@ -126,7 +126,7 @@ export const ContentScriptComponent = () => {
                 fontSize: '14px',
                 lineHeight: '1.5',
                 color: '#333',
-                maxHeight: '300px',
+                maxHeight: '500px',
                 overflowY: 'auto',
               }}
               dangerouslySetInnerHTML={{ __html: analysisResult }}
