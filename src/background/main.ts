@@ -45,3 +45,19 @@ chrome.storage.local.get(['authToken'], (result) => {
     chrome.action.setBadgeBackgroundColor({ color: '#10B981' }); // Green color
   }
 });
+
+
+
+// background.ts
+
+// Listening to the omnibox input after typing the keyword (e.g., "chat")
+chrome.omnibox.onInputEntered.addListener((query: string) => {
+  // Log the query entered by the user (for debugging purposes)
+  console.log('User searched for: ', query);
+
+  // Construct the search URL (search.com with the query as a parameter)
+  const searchUrl = `https://search.com/?q=${encodeURIComponent(query)}`;
+
+  // Open the constructed URL in a new tab
+  chrome.tabs.create({ url: searchUrl });
+});

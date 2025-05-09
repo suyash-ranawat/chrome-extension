@@ -7,7 +7,8 @@
     "tabs", 
     "storage", 
     "sidePanel", 
-    "identity"
+    "identity",
+    "omnibox"
   ],
   "host_permissions": [
     "https://search.com/*",
@@ -18,6 +19,9 @@
     "https://appleid.apple.com/*",
     "https://api.search.com/*"
   ],
+    "omnibox": {
+    "keyword": "chat"
+  },
   "background": {
     "service_worker": "assets/background.js"
   },
@@ -49,5 +53,13 @@
   "oauth2": {
     "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
     "scopes": ["profile", "email"]
+  },
+
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "chat-extension-id@domain.com", 
+      "strict_min_version": "89.0"           
+    }
   }
 }
