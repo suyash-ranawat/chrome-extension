@@ -19,11 +19,11 @@
     "https://appleid.apple.com/*",
     "https://api.search.com/*"
   ],
-    "omnibox": {
-    "keyword": "chat"
-  },
   "background": {
     "service_worker": "assets/background.js"
+  },
+  "omnibox": {
+    "keyword": "searchgpt"
   },
   "action": {
     "default_icon": {
