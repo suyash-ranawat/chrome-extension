@@ -11,25 +11,35 @@ export async function sendChatMessage(
   currentChatId?: string, 
   isTerms?: boolean
 ): Promise<ChatResponse> {
-  const url = new URL(`${API_BASE_URL}/search`);
+  const url = `${API_BASE_URL}/search`;
 
+  // Create form data to be sent in POST request
+  const formData = new URLSearchParams();
+  
   // Add parameters from API_KEYS configuration
-  url.searchParams.set('prompt', prompt);
-  url.searchParams.set('key', API_KEYS.key);
-  url.searchParams.set('auth', API_KEYS.auth);
-  url.searchParams.set('sub', API_KEYS.sub);
+  formData.append('prompt', prompt);
+  formData.append('key', API_KEYS.key);
+  formData.append('auth', API_KEYS.auth);
+  formData.append('sub', API_KEYS.sub);
   
   // Only add reset parameter if it exists and has a value
   if (API_KEYS.reset) {
-    url.searchParams.set('reset', API_KEYS.reset);
+    formData.append('reset', API_KEYS.reset);
   }
 
-  if (API_KEYS.uid) url.searchParams.set('uid', API_KEYS.uid);
-  if (currentChatId) url.searchParams.set('currentChatId', currentChatId);
-  if (isTerms) url.searchParams.set('isTerms', '1');
+  if (API_KEYS.uid) formData.append('uid', API_KEYS.uid);
+  if (currentChatId) formData.append('currentChatId', currentChatId);
+  if (isTerms) formData.append('isTerms', '1');
 
   try {
-    const res = await fetch(url.toString());
+    // Make POST request with the form data
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString()
+    });
 
     if (!res.ok) {
       console.error('API error:', await res.text());
@@ -48,25 +58,35 @@ export async function sendChatMessage(
 }
 
 export async function inBrowerContent(prompt: string): Promise<ChatResponse> {
-  const url = new URL(`${API_BASE_URL}/search`);
+  const url = `${API_BASE_URL}/search`;
 
+  // Create form data to be sent in POST request
+  const formData = new URLSearchParams();
+  
   // Add parameters from API_KEYS configuration
-  url.searchParams.set('prompt', prompt);
-  url.searchParams.set('key', API_KEYS.key);
-  url.searchParams.set('auth', API_KEYS.auth);
-  url.searchParams.set('sub', API_KEYS.sub);
+  formData.append('prompt', prompt);
+  formData.append('key', API_KEYS.key);
+  formData.append('auth', API_KEYS.auth);
+  formData.append('sub', API_KEYS.sub);
   
   // Only add reset parameter if it exists and has a value
   if (API_KEYS.reset) {
-    url.searchParams.set('reset', API_KEYS.reset);
+    formData.append('reset', API_KEYS.reset);
   }
 
-  if (API_KEYS.uid) url.searchParams.set('uid', API_KEYS.uid);
-  url.searchParams.set('currentChatId', '');
-  url.searchParams.set('isTerms', '1');
+  if (API_KEYS.uid) formData.append('uid', API_KEYS.uid);
+  formData.append('currentChatId', '');
+  formData.append('isTerms', '1');
 
   try {
-    const res = await fetch(url.toString());
+    // Make POST request with the form data
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString()
+    });
 
     if (!res.ok) {
       console.error('API error:', await res.text());
