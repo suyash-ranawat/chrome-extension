@@ -1,6 +1,6 @@
 // Update src/pages/panel/App.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { sendChatMessage } from '@/services/api';
+import { sendChatMessage, getChatContent } from '@/services/api';
 import TopNavigation from './components/TopNavigation';
 import SideIcons from './components/SideIcons';
 import ChatArea from './components/ChatArea';
@@ -163,6 +163,7 @@ useEffect(() => {
   };
 
   // Handle selecting a chat from history
+  // Handle selecting a chat from history
   const handleSelectChat = async (chatId: string) => {
     // Store the selected chat ID
     setCurrentChatId(chatId);
@@ -171,36 +172,47 @@ useEffect(() => {
     // Clear current messages
     setMessages([]);
     setIsMessageLoading(true);
+    setShowSuggestions(false); // Hide suggestions when loading a chat
     
     try {
-      // Fetch chat messages for this chat ID
-      const { response } = await sendChatMessage('', chatId);
+      console.log(`Loading chat with ID: ${chatId}`);
       
-      // Set the messages if available
-      if (response) {
-        // Parse the chat content - this depends on the API response structure
-        // This is a simplified example; you may need to adapt based on your API
-        try {
-          const parsedContent = JSON.parse(response);
-          if (Array.isArray(parsedContent)) {
-            setMessages(parsedContent);
-          } else if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
-            setMessages(parsedContent.messages);
-          } else {
-            // If response is not in the expected format, show it as a single message
-            setMessages([{ role: 'assistant', content: response }]);
+      // Fetch chat content using the new API
+      const chatData = await getChatContent(chatId);
+      
+      if (chatData && chatData.datalist) {
+        // Convert the API response to the Message format our chat expects
+        const messages: Message[] = [];
+        
+        chatData.datalist.forEach((item: any) => {
+          // Add user message if search exists
+          if (item.search) {
+            messages.push({
+              role: 'user',
+              content: item.search
+            });
           }
-        } catch (parseError) {
-          // If parsing fails, just display the raw response as a message
-          setMessages([{ role: 'assistant', content: response }]);
-        }
+          
+          // Add AI response
+          if (item.response && item.response.ai_response) {
+            messages.push({
+              role: 'assistant',
+              content: item.response.ai_response
+            });
+          }
+        });
+        
+        setMessages(messages);
+      } else {
+        console.warn('No chat data found');
+        setMessages([]);
       }
       
       // Switch to chat view
       setCurrentView('chat');
     } catch (error) {
       console.error('Error loading chat:', error);
-      setMessages([{ role: 'assistant', content: 'Error loading chat history.' }]);
+      setMessages([{ role: 'assistant', content: 'Error loading chat content. Please try again.' }]);
     } finally {
       setIsMessageLoading(false);
     }
@@ -210,7 +222,16 @@ useEffect(() => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      // After sign out, return to chat view
+      
+       // Clear UI state
+      setMessages([]);
+      setCurrentChatId(undefined);
+      setShowSuggestions(true);
+      
+      // Explicitly clear localStorage to ensure chat history is removed
+      localStorage.removeItem('chatHistory');
+      localStorage.removeItem('currentChatId');
+      
       setCurrentView('chat');
     } catch (error) {
       console.error('Sign out failed:', error);
@@ -254,7 +275,7 @@ useEffect(() => {
   if (currentView === 'auth') {
     return (
       <div className="flex h-full">
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col h-full max-w-[calc(100%-5px)]">
           <Auth onAuthComplete={handleAuthComplete} />
         </div>
         <SideIcons 
@@ -270,7 +291,7 @@ useEffect(() => {
   if (currentView === 'profile') {
     return (
       <div className="flex h-full">
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col h-full max-w-[calc(100%-5px)]">
           <Profile 
             user={user}
             onSignOut={handleSignOut}
@@ -291,7 +312,7 @@ useEffect(() => {
   if (currentView === 'history') {
     return (
       <div className="flex h-full">
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col h-full max-w-[calc(100%-5px)]">
           <HistoryView 
             onSelectChat={handleSelectChat}
           />
@@ -308,7 +329,7 @@ useEffect(() => {
   // Main chat interface
   return (
     <div className="flex h-full">
-      <div className="flex-1 flex flex-col h-full max-w-[calc(100%-10px)]">
+      <div className="flex-1 flex flex-col h-full max-w-[calc(100%-30px)]">
         <TopNavigation 
           onNewConversation={handleNewConversation} 
           isAuthenticated={isAuthenticated}

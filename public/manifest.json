@@ -51,8 +51,14 @@
     "128": "icons/icon128.png"
   },
   "oauth2": {
-    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "953860694439-pjk8stkaijgm7j7e82eegt3v1mj8hmqc.apps.googleusercontent.com",
     "scopes": ["profile", "email"]
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/icon128.png", "icons/icon48.png", "icons/icon16.png"],
+      "matches": ["https://*/*", "http://*/*"]
+    }
+  ]
 
 }

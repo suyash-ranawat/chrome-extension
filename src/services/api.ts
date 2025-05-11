@@ -1,9 +1,29 @@
 import { API_BASE_URL, API_KEYS } from './config';
+import { getUser, isAuthenticated as checkAuth } from './auth';
 
 // Define return types for better type safety
 interface ChatResponse {
   chatId: string;
   response: string;
+}
+
+// Helper function to add UID if user is authenticated
+async function addUidIfAuthenticated(formData: FormData | URLSearchParams): Promise<void> {
+  try {
+    const isAuth = await checkAuth();
+    if (isAuth) {
+      const user = await getUser();
+      if (user && user.id) {
+        if (formData instanceof FormData) {
+          formData.append('uid', user.id);
+        } else {
+          formData.set('uid', user.id);
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Could not get user UID:', error);
+  }
 }
 
 export async function sendChatMessage(
@@ -27,7 +47,9 @@ export async function sendChatMessage(
     formData.append('reset', API_KEYS.reset);
   }
 
-  if (API_KEYS.uid) formData.append('uid', API_KEYS.uid);
+  // Add UID if user is authenticated
+  await addUidIfAuthenticated(formData);
+  
   if (currentChatId) formData.append('currentChatId', currentChatId);
   if (isTerms) formData.append('isTerms', '1');
 
@@ -74,7 +96,9 @@ export async function inBrowerContent(prompt: string): Promise<ChatResponse> {
     formData.append('reset', API_KEYS.reset);
   }
 
-  if (API_KEYS.uid) formData.append('uid', API_KEYS.uid);
+  // Add UID if user is authenticated
+  await addUidIfAuthenticated(formData);
+  
   formData.append('currentChatId', '');
   formData.append('isTerms', '1');
 
@@ -104,13 +128,16 @@ export async function inBrowerContent(prompt: string): Promise<ChatResponse> {
   }
 }
 
-// Function to fetch chat history (if needed)
+// Function to fetch chat history
 export async function getChatHistory(chatId: string): Promise<Message[]> {
   const url = new URL(`${API_BASE_URL}/chat/history`);
   
   url.searchParams.set('chatId', chatId);
   url.searchParams.set('key', API_KEYS.key);
   url.searchParams.set('auth', API_KEYS.auth);
+  
+  // Add UID if user is authenticated
+  await addUidIfAuthenticated(url.searchParams);
   
   try {
     const res = await fetch(url.toString());
@@ -124,6 +151,45 @@ export async function getChatHistory(chatId: string): Promise<Message[]> {
   } catch (error) {
     console.error('Failed to fetch chat history:', error);
     return [];
+  }
+}
+
+// Function to fetch chat content by chat ID
+export async function getChatContent(chatId: string): Promise<any> {
+  const url = new URL(`${API_BASE_URL}/getchatcontent`);
+  
+  // Add required parameters
+  url.searchParams.set('chatId', chatId);
+  url.searchParams.set('key', API_KEYS.key);
+  url.searchParams.set('auth', API_KEYS.auth);
+  url.searchParams.set('sub', API_KEYS.sub || '');
+  
+  // Add UID if user is authenticated
+  await addUidIfAuthenticated(url.searchParams);
+  
+  try {
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (!res.ok) {
+      console.error('API error:', await res.text());
+      throw new Error(`Failed to fetch chat content: ${res.status}`);
+    }
+    
+    const data = await res.json();
+    
+    if (data.status !== 'success') {
+      throw new Error(data.message || 'Failed to fetch chat content');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Failed to fetch chat content:', error);
+    throw error;
   }
 }
 

@@ -100,7 +100,7 @@ const transformApiResponse = (apiResponse: ApiResponse): AuthResponse => {
   }
   
   // Extract user information from API data
-  const userId = data.user_id || '';
+  const userId = data.uid || '';
   const email = data.email || '';
   const phoneNumber = data.phone_number || undefined;
   const isSubscribed = !!data.is_subscribed;
@@ -274,8 +274,22 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
 // Sign out user
 export const signOut = async (): Promise<void> => {
   try {
+    
+    // Remove localStorage items for chat
+    localStorage.removeItem('chatHistory');
+    localStorage.removeItem('currentChatId');
+
+    console.log('After logout - chatHistory:', localStorage.getItem('chatHistory'));
+    console.log('After logout - currentChatId:', localStorage.getItem('currentChatId'));
+
     // Remove authentication data from storage
-    await chrome.storage.local.remove(['authToken', 'user', 'refreshToken']);
+    await chrome.storage.local.remove([
+      'authToken', 
+      'user', 
+      'refreshToken',
+      'chatHistory',
+      'currentChatId'
+    ]);
     
     // Notify background script
     try {

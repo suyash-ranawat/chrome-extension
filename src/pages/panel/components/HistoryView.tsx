@@ -31,6 +31,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({ onSelectChat }) => {
         // Set the grouped chat history data dynamically
         if (history && Object.keys(history).length > 0) {
           setChatHistory(history);
+          
+          // Check if there's a currentChatId in localStorage and select it
+          const currentChatId = localStorage.getItem('currentChatId');
+          if (currentChatId) {
+            setSelectedChatId(currentChatId);
+          }
         } else {
           throw new Error('No valid chat history data received');
         }
@@ -48,6 +54,11 @@ const HistoryView: React.FC<HistoryViewProps> = ({ onSelectChat }) => {
   // Handle chat selection
   const handleChatSelect = (chatId: string) => {
     setSelectedChatId(chatId);
+    
+    // Update localStorage with the selected chat ID
+    localStorage.setItem('currentChatId', chatId);
+    
+    // Call the parent component's handler
     onSelectChat(chatId);
   };
 
@@ -125,12 +136,20 @@ const HistoryView: React.FC<HistoryViewProps> = ({ onSelectChat }) => {
               {chatHistory[category].map((chat: ChatHistoryItem) => (
                 <div
                   key={chat.id}
+                  data-chat-id={chat.id}
                   className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedChatId === chat.id ? 'bg-gray-100' : ''}`}
-                  onClick={() => handleChatSelect(chat.id)}
+                  onClick={(e) => {
+                    const chatId = e.currentTarget.getAttribute('data-chat-id');
+                    if (chatId) {
+                      handleChatSelect(chatId);
+                    }
+                  }}
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="font-medium truncate">{truncateText(chat.name, 30)}</h3>
+                      <h3 className="font-medium truncate">
+                        {truncateText(chat.name, 30)}
+                      </h3>
                       <p className="text-sm text-gray-500 truncate">{truncateText(chat.first_message, 30)}</p>
                     </div>
                     <div className="text-xs text-gray-400 whitespace-nowrap ml-4">
