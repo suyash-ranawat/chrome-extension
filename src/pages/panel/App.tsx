@@ -1,4 +1,3 @@
-// Update src/pages/panel/App.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sendChatMessage } from '@/services/api';
 import TopNavigation from './components/TopNavigation';
@@ -62,88 +61,93 @@ const App: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+
   const saveChatHistoryToLocalStorage = (messages: Message[]) => {
     console.log('saveChatHistoryToLocalStorage');
     console.log(isAuthenticated);
-    if (!isAuthenticated) {
-      const formattedHistory = messages.map(msg => ({
-        message: msg.content,
-        type: msg.role
-      }));
-      console.log(formattedHistory);
-      localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
-    }
-  };
+  if (!isAuthenticated) {
+    const formattedHistory = messages.map(msg => ({
+      message: msg.content,
+      type: msg.role
+    }));
+    console.log(formattedHistory);
+    localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
+  }
+};
 
-  // Add this function to load messages from localStorage:
-  const loadChatHistoryFromLocalStorage = useCallback(() => {
-    console.log('loadChatHistoryFromLocalStorage');
-    console.log(isAuthenticated);
-    if (!isAuthenticated) {
-      const savedHistory = localStorage.getItem('chatHistory');
-      if (savedHistory) {
-        try {
-          const parsedHistory = JSON.parse(savedHistory);
-          const formattedMessages = parsedHistory.map((item: any) => ({
-            role: item.type as 'user' | 'assistant',
-            content: item.message
-          }));
-          setMessages(formattedMessages);
-        } catch (error) {
-          console.error('Error parsing chat history:', error);
-        }
+// Add this function to load messages from localStorage:
+const loadChatHistoryFromLocalStorage = useCallback(() => {
+  console.log('loadChatHistoryFromLocalStorage');
+  console.log(isAuthenticated);
+  if (!isAuthenticated) {
+    const savedHistory = localStorage.getItem('chatHistory');
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        const formattedMessages = parsedHistory.map((item: any) => ({
+          role: item.type as 'user' | 'assistant',
+          content: item.message
+        }));
+        setMessages(formattedMessages);
+      } catch (error) {
+        console.error('Error parsing chat history:', error);
       }
     }
-  }, [isAuthenticated]);
+  }
+}, [isAuthenticated]);
 
-  // Add effect to load messages on component mount:
-  useEffect(() => {
-    loadChatHistoryFromLocalStorage();
-  }, [loadChatHistoryFromLocalStorage]);
+// Add effect to load messages on component mount:
+useEffect(() => {
+  loadChatHistoryFromLocalStorage();
+}, [loadChatHistoryFromLocalStorage]);
 
-  // Add effect to save messages when they change:
-  useEffect(() => {
-    if (messages.length > 0) {
-      saveChatHistoryToLocalStorage(messages);
-    }
-  }, [messages, isAuthenticated]);
+// Add effect to save messages when they change:
+useEffect(() => {
+  if (messages.length > 0) {
+    saveChatHistoryToLocalStorage(messages);
+  }
+}, [messages, isAuthenticated]);
 
   const handleSubmit = async (userInput: string) => {
-    if (!userInput.trim() || isMessageLoading) return;
+  if (!userInput.trim() || isMessageLoading) return;
 
-    // Add user message to UI
-    const newMessages = [...messages, { role: 'user' as const, content: userInput }];
-    setMessages(prev => [...prev, { role: 'user', content: userInput }]);
-    setIsMessageLoading(true);
-    setShowSuggestions(false);
+  // Add user message to UI
+  const newMessages = [...messages, { role: 'user' as const, content: userInput }];
+  setMessages(prev => [...prev, { role: 'user', content: userInput }]);
+  setIsMessageLoading(true);
+  setShowSuggestions(false);
 
-    try {
-      const { chatId, response } = await sendChatMessage(userInput, currentChatId);
-      
-      // Update chat ID if this is a new conversation
-      if (chatId && !currentChatId) {
-        setCurrentChatId(chatId);
-        localStorage.setItem('currentChatId', chatId);
-      }
-
-      // Add assistant response to UI
-      const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
-      setMessages(updatedMessages);
-      
-      // Save to localStorage if not authenticated
-      if (!isAuthenticated) {
-        saveChatHistoryToLocalStorage(updatedMessages);
-      }
-
-      // Add assistant response to UI
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    } catch (error) {
-      console.error('Error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Error fetching response.' }]);
-    } finally {
-      setIsMessageLoading(false);
+  try {
+    const { chatId, response } = await sendChatMessage(userInput, currentChatId);
+    
+    // Update chat ID if this is a new conversation
+    if (chatId && !currentChatId) {
+      setCurrentChatId(chatId);
+      localStorage.setItem('currentChatId', chatId);
     }
-  };
+
+    // Add assistant response to UI
+    const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
+    setMessages(updatedMessages);
+    
+    // Save to localStorage if not authenticated
+    if (!isAuthenticated) {
+      saveChatHistoryToLocalStorage(updatedMessages);
+    }
+
+    // Clear the input field after receiving the response
+    setInput('');  // This line resets the input field
+
+    // Add assistant response to UI
+    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+  } catch (error) {
+    console.error('Error:', error);
+    setMessages(prev => [...prev, { role: 'assistant', content: 'Error fetching response.' }]);
+  } finally {
+    setIsMessageLoading(false);
+  }
+};
+
 
   const handlePromptClick = (promptText: string) => {
     setInput(promptText);
@@ -180,28 +184,34 @@ const App: React.FC = () => {
         throw new Error(message || 'Failed to load chat history.');
       }
 
-      // Handle "No chat history found" message gracefully
-      if (message === 'No chat history found') {
-        setMessages([{ role: 'assistant', content: 'No chat history found.' }]);
+      // Dynamically handle any message from the backend
+      if (message) {
+        // If there's any message, display it dynamically
+        setMessages([{ role: 'assistant', content: message }]);
       } else if (response) {
-        // Parse the chat content - this depends on the API response structure
-        // This is a simplified example; you may need to adapt based on your API
+        // Dynamically parse the response if it's in JSON format
         try {
           const parsedContent = JSON.parse(response);
+
+          // If parsedContent is an array, display it directly
           if (Array.isArray(parsedContent)) {
             setMessages(parsedContent);
           } else if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
+            // If there are messages in parsedContent, display them
             setMessages(parsedContent.messages);
           } else {
-            // If response is not in the expected format, show it as a single message
+            // Otherwise, just show the response as a single message
             setMessages([{ role: 'assistant', content: response }]);
           }
         } catch (parseError) {
           // If parsing fails, just display the raw response as a message
           setMessages([{ role: 'assistant', content: response }]);
         }
+      } else {
+        // If no message or response, display a default dynamic message
+        setMessages([{ role: 'assistant', content: 'No chat history available or unexpected response format.' }]);
       }
-      
+
       // Switch to chat view
       setCurrentView('chat');
     } catch (error) {
@@ -244,6 +254,7 @@ const App: React.FC = () => {
       return updatedMessages;
     });
   };
+
 
   // Switch between different views
   const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile' | 'history') => {

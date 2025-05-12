@@ -2,29 +2,31 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import SocialLoginButtons from './SocialLoginButtons';
-import ForgotPassword from './ForgotPassword'; // Import the ForgotPassword component
+import ForgotPassword from './ForgotPassword';  // Import ForgotPassword Component
+import PhoneLogin from './PhoneLogin';  // Import PhoneLogin Component
 import { SocialProvider } from '@/services/socialAuth';
 
 interface SignInProps {
   onSignIn: (email: string, password: string) => Promise<boolean>;
+  onPhoneSignIn: (phone: string, password: string) => Promise<void>;
   onSwitchToSignUp: () => void;
   onSocialLogin?: (provider: SocialProvider) => Promise<boolean>;
-  onPhoneLogin?: () => void;
   error?: string | null;
 }
 
 const SignIn: React.FC<SignInProps> = ({ 
   onSignIn, 
+  onPhoneSignIn, 
   onSwitchToSignUp,
   onSocialLogin,
-  onPhoneLogin,
   error 
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false); // New state for showing forgot password
+  const [showForgotPassword, setShowForgotPassword] = useState(false);  // State to handle ForgotPassword
+  const [showPhoneLogin, setShowPhoneLogin] = useState(false);  // State to handle PhoneLogin
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,39 +34,22 @@ const SignIn: React.FC<SignInProps> = ({
 
     try {
       await onSignIn(email, password);
-      // No need to handle errors here - parent component does that
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle social login
-  const handleSocialLoginClick = async (provider: SocialProvider) => {
-    setIsLoading(true);
-    try {
-      if (onSocialLogin) {
-        await onSocialLogin(provider);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle phone login
-  const handlePhoneLoginClick = () => {
-    if (onPhoneLogin) {
-      onPhoneLogin();
-    }
-  };
-
-  // Handle forgot password click
   const handleForgotPasswordClick = () => {
-    setShowForgotPassword(true); // Show ForgotPassword component
+    setShowForgotPassword(true);  // Show ForgotPassword Component
   };
 
-  // Handle back to sign-in
+  const handlePhoneLoginClick = () => {
+    setShowPhoneLogin(true);  // Show PhoneLogin Component
+  };
+
   const handleBackToSignIn = () => {
-    setShowForgotPassword(false); // Hide ForgotPassword component
+    setShowForgotPassword(false);
+    setShowPhoneLogin(false);  // Hide PhoneLogin Component
   };
 
   // Loading state
@@ -77,9 +62,13 @@ const SignIn: React.FC<SignInProps> = ({
     );
   }
 
-  // If Forgot Password is being shown, render that component
+  // Show ForgotPassword or PhoneLogin if needed
   if (showForgotPassword) {
     return <ForgotPassword onResetPassword={onSignIn} onBackToSignIn={handleBackToSignIn} />;
+  }
+
+  if (showPhoneLogin) {
+    return <PhoneLogin onPhoneSignIn={onPhoneSignIn} onBackToSignIn={handleBackToSignIn} />;
   }
 
   return (
@@ -96,9 +85,7 @@ const SignIn: React.FC<SignInProps> = ({
 
       {/* Social Login Buttons */}
       <div className="w-full max-w-md mb-6">
-        <SocialLoginButtons
-          onSocialLogin={handleSocialLoginClick}
-        />
+        <SocialLoginButtons onSocialLogin={onSocialLogin} />
       </div>
 
       {error && (
@@ -153,11 +140,7 @@ const SignIn: React.FC<SignInProps> = ({
           </div>
 
           <div className="text-sm">
-            <a 
-              href="#"
-              className="font-medium text-green-600 hover:text-green-500"
-              onClick={handleForgotPasswordClick} // Open Forgot Password
-            >
+            <a href="#" className="font-medium text-green-600 hover:text-green-500" onClick={handleForgotPasswordClick}>
               Forgot password?
             </a>
           </div>
@@ -173,9 +156,6 @@ const SignIn: React.FC<SignInProps> = ({
             onClick={handlePhoneLoginClick}
             className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
             Sign in with phone number
           </button>
 
@@ -196,8 +176,6 @@ const SignIn: React.FC<SignInProps> = ({
 };
 
 export default SignIn;
-
-
 
 
 

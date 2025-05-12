@@ -8,13 +8,16 @@
     "build": "npm run build:normal && npm run build:content"
   },
   "dependencies": {
+    "@heroicons/react": "^2.0.18",
+    "@tailwindcss/typography": "^0.5.10",
+    "classnames": "^2.3.2",
+    "intl-tel-input": "^25.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
-    "tailwindcss": "^3.4.0",
-    "@tailwindcss/typography": "^0.5.10",
-    "@heroicons/react": "^2.0.18",
-    "classnames": "^2.3.2"
+    "react-phone-input-2": "^2.15.1",
+    "react-phone-number-input": "^3.4.12",
+    "tailwindcss": "^3.4.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
