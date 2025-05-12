@@ -1,5 +1,6 @@
-import { API_BASE_URL, GOOGLE_CLIENT_ID, FACEBOOK_APP_ID, MICROSOFT_CLIENT_ID, APPLE_SERVICE_ID } from './config';
+import { API_BASE_URL, GOOGLE_CLIENT_ID, FACEBOOK_APP_ID, MICROSOFT_CLIENT_ID, APPLE_SERVICE_ID, DEV_FLAG } from './config';
 import { storeToken, storeUser, User, storeRefreshToken } from './auth';
+import { setAuthState } from '@/store/authStore';
 
 export type SocialProvider = 'google' | 'facebook' | 'microsoft' | 'apple';
 
@@ -11,6 +12,23 @@ export const initiateSocialLogin = async (provider: SocialProvider): Promise<voi
   try {
     console.log(`Initiating ${provider} login...`);
     
+    // Use dummy data for testing if DEV_FLAG is '1'
+    if (DEV_FLAG === '1') {
+      switch (provider) {
+        case 'google':
+          return await handleDummyGoogleAuth();
+        case 'facebook':
+          return await handleDummyFacebookAuth();
+        case 'microsoft':
+          return await handleDummyMicrosoftAuth();
+        case 'apple':
+          return await handleDummyAppleAuth();
+        default:
+          throw new Error(`Unsupported provider: ${provider}`);
+      }
+    }
+    
+    // Normal OAuth flow if DEV_FLAG is not '1'
     switch (provider) {
       case 'google':
         return await handleGoogleAuth();
@@ -29,572 +47,378 @@ export const initiateSocialLogin = async (provider: SocialProvider): Promise<voi
   }
 };
 
+// Dummy Data for Testing
+const DUMMY_GOOGLE_USER = {
+  full_name: 'Dummy Google User',
+  username: 'dummygoogleuser@example.com',
+  email: 'dummygoogleuser@example.com',
+  google_id: 'google-dummy-id-12345',
+  image_url: 'https://www.example.com/dummy-google-avatar.jpg',
+  task: 'signin'
+};
+
+const DUMMY_FACEBOOK_USER = {
+  full_name: 'Dummy Facebook User',
+  username: 'dummyfacebookuser@example.com',
+  email: 'dummyfacebookuser@example.com',
+  fb_id: 'facebook-dummy-id-67890',
+  image_url: 'https://www.example.com/dummy-facebook-avatar.jpg',
+  task: 'signin'
+};
+
+const DUMMY_MICROSOFT_USER = {
+  full_name: 'Dummy Microsoft User',
+  username: 'dummymicrosoftuser@example.com',
+  email: 'dummymicrosoftuser@example.com',
+  ms_id: 'microsoft-dummy-id-11223',
+  image_url: 'https://www.example.com/dummy-microsoft-avatar.jpg',
+  task: 'signin'
+};
+
+const DUMMY_APPLE_USER = {
+  full_name: 'Dummy Apple User',
+  username: 'dummyappleuser@example.com',
+  email: 'dummyappleuser@example.com',
+  app_id: 'apple-dummy-id-44556',
+  image_url: 'https://www.example.com/dummy-apple-avatar.jpg',
+  task: 'signin'
+};
+
+// Handle Dummy Google Authentication
+const handleDummyGoogleAuth = async (): Promise<void> => {
+  const userData = DUMMY_GOOGLE_USER;
+  console.log("Dummy Google Auth successful:", userData);
+  await registerSocialUser(userData);
+};
+
+// Handle Dummy Facebook Authentication
+const handleDummyFacebookAuth = async (): Promise<void> => {
+  const userData = DUMMY_FACEBOOK_USER;
+  console.log("Dummy Facebook Auth successful:", userData);
+  await registerSocialUser(userData);
+};
+
+// Handle Dummy Microsoft Authentication
+const handleDummyMicrosoftAuth = async (): Promise<void> => {
+  const userData = DUMMY_MICROSOFT_USER;
+  console.log("Dummy Microsoft Auth successful:", userData);
+  await registerSocialUser(userData);
+};
+
+// Handle Dummy Apple Authentication
+const handleDummyAppleAuth = async (): Promise<void> => {
+  const userData = DUMMY_APPLE_USER;
+  console.log("Dummy Apple Auth successful:", userData);
+  await registerSocialUser(userData);
+};
+
 /**
- * Handle Google Authentication
+ * Handle Google Authentication using Chrome's identity API
  */
-// const handleGoogleAuth = async (): Promise<void> => {
-//   return new Promise((resolve, reject) => {
-//     // First load Google script if needed
-//     const loadGoogleScript = () => {
-//       const script = document.createElement('script');
-//       script.src = 'https://accounts.google.com/gsi/client';
-//       script.id = 'google-signin-script';
-//       script.async = true;
-//       script.defer = true;
-//       script.onload = initGoogleAuth;
-//       script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
-//       document.head.appendChild(script);
-//     };
-
-//     // Initialize Google Auth
-//     const initGoogleAuth = () => {
-//       if (!window.google || !window.google.accounts) {
-//         reject(new Error('Google Identity Services not available'));
-//         return;
-//       }
-
-//       // Create a hidden button element
-//       const googleButtonContainer = document.createElement('div');
-//       googleButtonContainer.style.display = 'none';
-//       document.body.appendChild(googleButtonContainer);
-
-//       // Set up callback
-//       window.handleCredentialResponse = (response) => {
-//         if (!response.credential) {
-//           reject(new Error('No credential received from Google'));
-//           return;
-//         }
-
-//         // Parse JWT token
-//         const responsePayload = parseJwt(response.credential);
-//         console.log('Google auth successful:', responsePayload);
-
-//         const userData = {
-//           full_name: responsePayload.name,
-//           username: responsePayload.email,
-//           email: responsePayload.email,
-//           google_id: responsePayload.sub,
-//           image_url: responsePayload.picture,
-//           task: 'signin'
-//         };
-
-//         registerSocialUser(userData)
-//           .then(() => resolve())
-//           .catch((error) => reject(error));
-//       };
-
-//       // Initialize Google Sign-In with error handling
-//       try {
-//         const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
-//         console.log('Using Google client ID:', clientId);
-
-//         window.google.accounts.id.initialize({
-//           client_id: clientId,
-//           callback: window.handleCredentialResponse,
-//           ux_mode: "popup"
-//         });
-
-//         // Render button and trigger click
-//         window.google.accounts.id.renderButton(googleButtonContainer, {
-//           type: "icon",
-//           width: 200
-//         });
-
-//         // Try prompt first
-//         window.google.accounts.id.prompt((notification) => {
-//           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-//             console.log('Google prompt not displayed:', notification.getNotDisplayedReason());
-//             // Try clicking the button as fallback
-//             const button = googleButtonContainer.querySelector('div[role=button]');
-//             if (button) {
-//               (button as HTMLElement).click();
-//             } else {
-//               reject(new Error('Failed to display Google login prompt'));
-//             }
-//           }
-//         });
-//       } catch (error) {
-//         console.error('Google auth initialization error:', error);
-//         reject(error);
-//       }
-//     };
-
-//     // Start the process
-//     if (document.getElementById('google-signin-script') && window.google?.accounts) {
-//       // Script already loaded
-//       initGoogleAuth();
-//     } else {
-//       // Load script first
-//       loadGoogleScript();
-//     }
-//   });
-// };
 const handleGoogleAuth = async (): Promise<void> => {
-  const redirectUri = chrome.identity.getRedirectURL('google');
-
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
-    `?client_id=${GOOGLE_CLIENT_ID}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&response_type=token` +
-    `&scope=openid%20email%20profile`;
-
+  // Use Chrome identity API for authentication
   return new Promise<void>((resolve, reject) => {
+    // Define the authentication details
+    const manifest = chrome.runtime.getManifest();
+    const clientId = manifest.oauth2?.client_id || '';
+    console.log(chrome.identity.getRedirectURL("google"));
+    if (!clientId) {
+      return reject(new Error("Google OAuth client ID is not configured in manifest"));
+    }
+    
+    // Set up authentication parameters
+    const authParams = new URLSearchParams({
+      'client_id': clientId,
+      'response_type': 'token',
+      'redirect_uri': chrome.identity.getRedirectURL("google"),
+      'scope': 'email profile'
+    });
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/auth?${authParams.toString()}`;
+    
+    // Launch the web auth flow
     chrome.identity.launchWebAuthFlow(
       {
         url: authUrl,
         interactive: true
       },
       async (redirectUrl) => {
-        if (chrome.runtime.lastError || !redirectUrl) {
-          return reject(chrome.runtime.lastError || new Error("No redirect URL"));
+        // Handle errors from identity API
+        if (chrome.runtime.lastError) {
+          console.error('Chrome identity error:', chrome.runtime.lastError);
+          return reject(new Error(chrome.runtime.lastError.message || "Authentication failed"));
         }
-
-        const accessToken = new URL(redirectUrl).hash
-          .substring(1)
-          .split('&')
-          .find(param => param.startsWith("access_token="))
-          ?.split('=')[1];
-
-        if (!accessToken) {
-          return reject(new Error("No access token found"));
+        
+        if (!redirectUrl) {
+          return reject(new Error("No redirect URL returned from authentication"));
         }
-
-        // Fetch user info from Google
-        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-
-        const userInfo = await res.json();
-
-        const userData = {
-          full_name: userInfo.name,
-          username: userInfo.email,
-          email: userInfo.email,
-          google_id: userInfo.sub,
-          image_url: userInfo.picture,
-          task: 'signin'
-        };
-
-        // Send data to your existing registration API
-        await registerSocialUser(userData);
-        resolve();
+        
+        try {
+          // Extract access token from the redirect URL
+          const url = new URL(redirectUrl);
+          const fragmentParams = new URLSearchParams(url.hash.substring(1));
+          const accessToken = fragmentParams.get('access_token');
+          
+          if (!accessToken) {
+            return reject(new Error("No access token found in the response"));
+          }
+          
+          // Get user info from Google using the access token
+          const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+          
+          if (!userInfoResponse.ok) {
+            throw new Error(`Failed to get user info: ${userInfoResponse.status}`);
+          }
+          
+          const userInfo = await userInfoResponse.json();
+          
+          // Prepare user data for API
+          const userData = {
+            full_name: userInfo.name,
+            username: userInfo.email,
+            email: userInfo.email,
+            google_id: userInfo.sub,
+            image_url: userInfo.picture,
+            task: 'signin'
+          };
+          
+          // Register the user with our backend
+          await registerSocialUser(userData);
+          resolve();
+        } catch (error) {
+          console.error('Error during Google authentication:', error);
+          reject(error);
+        }
       }
     );
   });
 };
-
-
 
 /**
  * Handle Facebook Authentication
  */
-// const handleFacebookAuth = async (): Promise<void> => {
-//   // Load Facebook SDK
-//   // if (!document.getElementById('facebook-jssdk')) {
-//     const script = document.createElement('script');
-//     script.src = 'https://connect.facebook.net/en_US/sdk.js';
-//     script.id = 'facebook-jssdk';
-//     script.async = true;
-//     script.defer = true;
-//     document.head.appendChild(script);
-    
-//     await new Promise((resolve, reject) => {
-//       script.onload = resolve;
-//       script.onerror = reject;
-//     });
-//   // }
-  
-//   return new Promise((resolve, reject) => {
-//     try {
-//       // Initialize Facebook SDK if not already initialized
-//       if (!window.FB) {
-//         reject(new Error('Facebook SDK not available'));
-//         return;
-//       }
-      
-//       window.FB.init({
-//         appId: `${FACEBOOK_APP_ID}` || '',
-//         xfbml: true,
-//         version: 'v18.0'
-//       });
-      
-//       // Trigger Facebook login
-//       window.FB.login(function(response) {
-//         if (response.authResponse) {
-//           const accessToken = response.authResponse.accessToken;
-//           const userId = response.authResponse.userID;
-          
-//           // Get user profile
-//           window.FB.api('/me', {
-//             locale: 'en_US',
-//             fields: 'name, email, picture'
-//           }, function(profileResponse) {
-//             if (!profileResponse || profileResponse.error) {
-//               reject(new Error(profileResponse?.error?.message || 'Failed to fetch profile'));
-//               return;
-//             }
-            
-//             // Prepare data for API call
-//             const userData = {
-//               full_name: profileResponse.name,
-//               username: profileResponse.email,
-//               email: profileResponse.email,
-//               fb_id: userId,
-//               image_url: profileResponse.picture?.data?.url || '',
-//               task: 'signin' // Using 'signin' as specified in your cURL example
-//             };
-            
-//             // Send data to API
-//             registerSocialUser(userData)
-//               .then(() => resolve())
-//               .catch((error) => reject(error));
-//           });
-//         } else {
-//           reject(new Error('User cancelled login or did not fully authorize'));
-//         }
-//       }, {
-//         scope: 'email'
-//       });
-//     } catch (error) {
-//       reject(error);
-//     }
-//   });
-// };
 const handleFacebookAuth = async (): Promise<void> => {
-  const redirectUri = chrome.identity.getRedirectURL('facebook');
-  const authUrl = `https://www.facebook.com/v12.0/dialog/oauth` +
-    `?client_id=${FACEBOOK_APP_ID}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&scope=email`;
-
+  // For Chrome extensions, we need to use Chrome's identity API
   return new Promise<void>((resolve, reject) => {
+    const redirectURL = chrome.identity.getRedirectURL("facebook");
+    const appId = `${FACEBOOK_APP_ID}`; // Replace with your actual Facebook App ID
+    console.log(redirectURL);
+    const authParams = new URLSearchParams({
+      'client_id': appId,
+      'response_type': 'token',
+      'redirect_uri': redirectURL,
+      'scope': 'email,public_profile'
+    });
+    
+    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${authParams.toString()}`;
+    
     chrome.identity.launchWebAuthFlow(
-      { url: authUrl, interactive: true },
+      {
+        url: authUrl,
+        interactive: true
+      },
       async (redirectUrl) => {
-        if (chrome.runtime.lastError || !redirectUrl) {
-          return reject(chrome.runtime.lastError || new Error("No redirect URL"));
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message || "Facebook authentication failed"));
         }
-
-        const urlParams = new URL(redirectUrl);
-        const accessToken = urlParams.searchParams.get("access_token");
-
-        if (!accessToken) {
-          return reject(new Error("No access token found"));
+        
+        if (!redirectUrl) {
+          return reject(new Error("No redirect URL returned from Facebook authentication"));
         }
-
-        // Fetch user info from Facebook Graph API
-        const res = await fetch(`https://graph.facebook.com/me?fields=name,email,picture&access_token=${accessToken}`);
-        const userInfo = await res.json();
-
-        const userData = {
-          full_name: userInfo.name,
-          username: userInfo.email,
-          email: userInfo.email,
-          fb_id: userInfo.id,
-          image_url: userInfo.picture?.data?.url,
-          task: 'signin'
-        };
-
-        // Send data to your existing registration API
-        await registerSocialUser(userData);
-        resolve();
+        
+        try {
+          // Extract access token from the redirect URL
+          const url = new URL(redirectUrl);
+          const fragmentParams = new URLSearchParams(url.hash.substring(1));
+          const accessToken = fragmentParams.get('access_token');
+          
+          if (!accessToken) {
+            return reject(new Error("No access token found in Facebook response"));
+          }
+          
+          // Get user info from Facebook using the access token
+          const userInfoResponse = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}`);
+          
+          if (!userInfoResponse.ok) {
+            throw new Error(`Failed to get user info from Facebook: ${userInfoResponse.status}`);
+          }
+          
+          const userInfo = await userInfoResponse.json();
+          
+          // Prepare user data for API
+          const userData = {
+            full_name: userInfo.name,
+            username: userInfo.email,
+            email: userInfo.email,
+            fb_id: userInfo.id,
+            image_url: userInfo.picture?.data?.url || '',
+            task: 'signin'
+          };
+          
+          // Register the user with our backend
+          await registerSocialUser(userData);
+          resolve();
+        } catch (error) {
+          console.error('Error during Facebook authentication:', error);
+          reject(error);
+        }
       }
     );
   });
 };
-
-
 
 /**
  * Handle Microsoft Authentication
  */
-// const handleMicrosoftAuth = async (): Promise<void> => {
-//   // Load Microsoft MSAL
-//   // if (!document.getElementById('microsoft-msal-script')) {
-//     const script = document.createElement('script');
-//     script.src = 'https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js';
-//     script.id = 'microsoft-msal-script';
-//     script.async = true;
-//     script.defer = true;
-//     document.head.appendChild(script);
-    
-//     await new Promise((resolve, reject) => {
-//       script.onload = resolve;
-//       script.onerror = reject;
-//     });
-//   // }
-  
-//   return new Promise((resolve, reject) => {
-//     try {
-//       if (!window.msal) {
-//         reject(new Error('MSAL library not available'));
-//         return;
-//       }
-      
-//       // Initialize MSAL
-//       const msalConfig = {
-//         auth: {
-//           clientId: `${MICROSOFT_CLIENT_ID}` || '',
-//           authority: 'https://login.microsoftonline.com/common',
-//           redirectUri: window.location.origin + '/auth/microsoft/callback'
-//         },
-//         cache: {
-//           cacheLocation: 'sessionStorage',
-//           storeAuthStateInCookie: true
-//         }
-//       };
-      
-//       const msalInstance = new window.msal.PublicClientApplication(msalConfig);
-      
-//       // Login request
-//       const loginRequest = {
-//         scopes: ["user.read", "mail.read", "openid", "profile", "email"]
-//       };
-      
-//       // Trigger Microsoft login
-//       msalInstance.loginPopup(loginRequest)
-//         .then(function(loginResponse) {
-//           const accessToken = loginResponse.accessToken;
-          
-//           // Fetch user profile from Microsoft Graph API
-//           fetch('https://graph.microsoft.com/v1.0/me', {
-//             method: 'GET',
-//             headers: {
-//               'Authorization': 'Bearer ' + accessToken
-//             }
-//           })
-//           .then(response => response.json())
-//           .then(data => {
-//             if (data.error) {
-//               reject(new Error(data.error.message || 'Failed to fetch profile'));
-//               return;
-//             }
-            
-//             // Get user photo if available
-//             fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
-//               method: 'GET',
-//               headers: {
-//                 'Authorization': 'Bearer ' + accessToken
-//               }
-//             })
-//             .then(photoResponse => {
-//               let imageUrl = '';
-              
-//               if (photoResponse.ok) {
-//                 imageUrl = URL.createObjectURL(photoResponse.blob());
-//               }
-              
-//               // Prepare data for API call
-//               const userData = {
-//                 full_name: data.displayName,
-//                 username: data.userPrincipalName,
-//                 email: data.mail || data.userPrincipalName,
-//                 ms_id: data.id,
-//                 image_url: imageUrl,
-//                 task: 'signin'
-//               };
-              
-//               // Send data to API
-//               registerSocialUser(userData)
-//                 .then(() => resolve())
-//                 .catch((error) => reject(error));
-//             })
-//             .catch(() => {
-//               // Continue even if photo fetch fails
-//               const userData = {
-//                 full_name: data.displayName,
-//                 username: data.userPrincipalName,
-//                 email: data.mail || data.userPrincipalName,
-//                 ms_id: data.id,
-//                 task: 'signin'
-//               };
-              
-//               registerSocialUser(userData)
-//                 .then(() => resolve())
-//                 .catch((error) => reject(error));
-//             });
-//           })
-//           .catch(error => {
-//             console.error('Error fetching Microsoft profile:', error);
-//             reject(error);
-//           });
-//         })
-//         .catch(function(error) {
-//           console.error('Microsoft login failed:', error);
-//           reject(error);
-//         });
-//     } catch (error) {
-//       reject(error);
-//     }
-//   });
-// };
 const handleMicrosoftAuth = async (): Promise<void> => {
-  const redirectUri = chrome.identity.getRedirectURL('microsoft');
-  const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize` +
-    `?client_id=${MICROSOFT_CLIENT_ID}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&response_type=token` +
-    `&scope=openid profile email`;
-
   return new Promise<void>((resolve, reject) => {
+    const redirectURL = chrome.identity.getRedirectURL("microsoft");
+    const clientId = `${MICROSOFT_CLIENT_ID}`; // Replace with your actual Microsoft Client ID
+    console.log(redirectURL);
+    const authParams = new URLSearchParams({
+      'client_id': clientId,
+      'response_type': 'token',
+      'redirect_uri': redirectURL,
+      'scope': 'user.read openid profile email'
+    });
+    
+    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${authParams.toString()}`;
+    
     chrome.identity.launchWebAuthFlow(
-      { url: authUrl, interactive: true },
+      {
+        url: authUrl,
+        interactive: true
+      },
       async (redirectUrl) => {
-        if (chrome.runtime.lastError || !redirectUrl) {
-          return reject(chrome.runtime.lastError || new Error("No redirect URL"));
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message || "Microsoft authentication failed"));
         }
-
-        const accessToken = new URL(redirectUrl).hash
-          .substring(1)
-          .split('&')
-          .find(param => param.startsWith("access_token="))
-          ?.split('=')[1];
-
-        if (!accessToken) {
-          return reject(new Error("No access token found"));
+        
+        if (!redirectUrl) {
+          return reject(new Error("No redirect URL returned from Microsoft authentication"));
         }
-
-        // Fetch user info from Microsoft Graph API
-        const res = await fetch('https://graph.microsoft.com/v1.0/me', {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-
-        const userInfo = await res.json();
-
-        const userData = {
-          full_name: userInfo.displayName,
-          username: userInfo.mail || userInfo.userPrincipalName,
-          email: userInfo.mail || userInfo.userPrincipalName,
-          ms_id: userInfo.id,
-          image_url: userInfo.photo ? URL.createObjectURL(userInfo.photo) : '',
-          task: 'signin'
-        };
-
-        // Send data to your existing registration API
-        await registerSocialUser(userData);
-        resolve();
+        
+        try {
+          // Extract access token from the redirect URL
+          const url = new URL(redirectUrl);
+          const fragmentParams = new URLSearchParams(url.hash.substring(1));
+          const accessToken = fragmentParams.get('access_token');
+          
+          if (!accessToken) {
+            return reject(new Error("No access token found in Microsoft response"));
+          }
+          
+          // Get user info from Microsoft Graph API
+          const userInfoResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+          
+          if (!userInfoResponse.ok) {
+            throw new Error(`Failed to get user info from Microsoft: ${userInfoResponse.status}`);
+          }
+          
+          const userInfo = await userInfoResponse.json();
+          
+          // Prepare user data for API
+          const userData = {
+            full_name: userInfo.displayName,
+            username: userInfo.userPrincipalName || userInfo.mail,
+            email: userInfo.mail || userInfo.userPrincipalName,
+            ms_id: userInfo.id,
+            task: 'signin'
+          };
+          
+          // Register the user with our backend
+          await registerSocialUser(userData);
+          resolve();
+        } catch (error) {
+          console.error('Error during Microsoft authentication:', error);
+          reject(error);
+        }
       }
     );
   });
 };
-
 
 /**
  * Handle Apple Authentication
  */
-// const handleAppleAuth = async (): Promise<void> => {
-//   // Load Apple Sign In JS
-//   // if (!document.getElementById('apple-signin-script')) {
-//     const script = document.createElement('script');
-//     script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
-//     script.id = 'apple-signin-script';
-//     script.async = true;
-//     script.defer = true;
-//     document.head.appendChild(script);
-    
-//     await new Promise((resolve, reject) => {
-//       script.onload = resolve;
-//       script.onerror = reject;
-//     });
-//   // }
-  
-//   return new Promise((resolve, reject) => {
-//     try {
-//       if (!window.AppleID) {
-//         reject(new Error('Apple Sign In JS not available'));
-//         return;
-//       }
-      
-//       // Get the domain from current URL
-//       const parsedUrl = new URL(window.location.href);
-//       const protocolAndDomain = parsedUrl.origin;
-      
-//       // Initialize Apple Sign-In
-//       window.AppleID.auth.init({
-//         clientId: `${APPLE_SERVICE_ID}` || '',
-//         redirectURI: protocolAndDomain,
-//         usePopup: true
-//       });
-      
-//       // Trigger Apple sign-in
-//       window.AppleID.auth.signIn()
-//         .then(function(response) {
-//           const idToken = response.authorization.id_token;
-//           const userData = parseJwt(idToken);
-          
-//           if (!userData) {
-//             reject(new Error('Failed to parse Apple ID token'));
-//             return;
-//           }
-          
-//           // Prepare API data
-//           const postData: Record<string, any> = {
-//             email: userData.email,
-//             app_id: userData.sub,
-//             task: 'signup' // Using 'signup' as specified in your cURL example
-//           };
-          
-//           // Add full name if available
-//           const fullName = response.user ? response.user.name : null;
-//           if (fullName) {
-//             postData.full_name = `${fullName.firstName} ${fullName.lastName}`;
-//           }
-          
-//           // Send data to API
-//           registerSocialUser(postData)
-//             .then(() => resolve())
-//             .catch((error) => reject(error));
-//         })
-//         .catch(function(error) {
-//           console.error('Apple Sign-In Error:', error);
-//           reject(error);
-//         });
-//     } catch (error) {
-//       reject(error);
-//     }
-//   });
-// };
 const handleAppleAuth = async (): Promise<void> => {
-  const redirectUri = chrome.identity.getRedirectURL('apple');
-  const authUrl = `https://appleid.apple.com/auth/authorize` +
-    `?client_id=${APPLE_SERVICE_ID}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&response_type=code id_token` +
-    `&scope=name email`;
-
   return new Promise<void>((resolve, reject) => {
+    const redirectURL = chrome.identity.getRedirectURL("apple");
+    const clientId = `${APPLE_SERVICE_ID}`; // Replace with your actual Apple Service ID
+    console.log(redirectURL);
+    
+    const authParams = new URLSearchParams({
+      'client_id': clientId,
+      'redirect_uri': redirectURL,
+      'response_type': 'code id_token',
+      'scope': 'name email',
+      'response_mode': 'fragment'
+    });
+    
+    const authUrl = `https://appleid.apple.com/auth/authorize?${authParams.toString()}`;
+    
     chrome.identity.launchWebAuthFlow(
-      { url: authUrl, interactive: true },
+      {
+        url: authUrl,
+        interactive: true
+      },
       async (redirectUrl) => {
-        if (chrome.runtime.lastError || !redirectUrl) {
-          return reject(chrome.runtime.lastError || new Error("No redirect URL"));
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message || "Apple authentication failed"));
         }
-
-        const urlParams = new URL(redirectUrl);
-        const authorizationCode = urlParams.searchParams.get("code");
-        const idToken = urlParams.searchParams.get("id_token");
-
-        if (!idToken) {
-          return reject(new Error("No id_token found"));
-        }
-
-        // Parse the JWT from Apple and fetch user info
-        const userData = parseJwt(idToken);
         
-        // Send data to your existing registration API
-        await registerSocialUser({
-          full_name: userData?.name,
-          email: userData?.email,
-          app_id: userData?.sub,
-          task: 'signup' // Using 'signup' as specified
-        });
-        resolve();
+        if (!redirectUrl) {
+          return reject(new Error("No redirect URL returned from Apple authentication"));
+        }
+        
+        try {
+          // Extract ID token from the redirect URL
+          const url = new URL(redirectUrl);
+          const fragmentParams = new URLSearchParams(url.hash.substring(1));
+          const idToken = fragmentParams.get('id_token');
+          
+          if (!idToken) {
+            return reject(new Error("No id_token found in Apple response"));
+          }
+          
+          // Parse JWT token to get user info
+          const userData = parseJwt(idToken);
+          
+          if (!userData) {
+            return reject(new Error('Failed to parse Apple ID token'));
+          }
+          
+          // Prepare data for API
+          const postData: Record<string, any> = {
+            email: userData.email,
+            app_id: userData.sub,
+            task: 'signin'
+          };
+          
+          // Add full name if available in the user object
+          if (userData.name) {
+            postData.full_name = `${userData.name.firstName} ${userData.name.lastName}`;
+          }
+          
+          // Register the user with our backend
+          await registerSocialUser(postData);
+          resolve();
+        } catch (error) {
+          console.error('Error during Apple authentication:', error);
+          reject(error);
+        }
       }
     );
   });
 };
-
-
 
 /**
  * Parse JWT token (used by Google and Apple authentication)
@@ -646,21 +470,60 @@ const registerSocialUser = async (data: Record<string, any>): Promise<void> => {
       throw new Error('Invalid response format');
     }
     
-    if (responseData.status) {
-      // Store authentication data
-      if (responseData.token) {
-        await storeToken(responseData.token);
-      }
-      if (responseData.refresh_token) {
-        await storeRefreshToken(responseData.refresh_token);
+    if (responseData.success) {
+      console.log('Social login successful:', responseData);
+      
+      // Extract token and refresh token
+      const accessToken = responseData.data?.access_token;
+      const refreshToken = responseData.data?.refresh_token;
+      
+      // Check if we have the required authentication data
+      if (!accessToken) {
+        throw new Error('Access token missing from response');
       }
       
-      if (responseData.user) {
-        await storeUser(responseData.user);
+      // Create user object from response data
+      const userData: User = {
+        id: responseData.data.user_id || '',
+        email: responseData.data.email || '',
+        username: responseData.data.email ? responseData.data.email.split('@')[0] : '',
+        createdAt: new Date().toISOString(),
+        phoneNumber: responseData.data.phone_number || undefined,
+        isEmailVerified: true, // Since they authenticated through a social provider
+        isPhoneVerified: !!responseData.data.phone_number,
+        // Store which social provider was used if available
+        socialProviders: data.google_id ? ['google'] : 
+                         data.fb_id ? ['facebook'] : 
+                         data.ms_id ? ['microsoft'] : 
+                         data.app_id ? ['apple'] : undefined
+      };
+      
+      // Store authentication data
+      await storeToken(accessToken);
+      if (refreshToken) {
+        await storeRefreshToken(refreshToken);
+      }
+      await storeUser(userData);
+      
+      // Update global auth state
+      setAuthState(userData, true);
+      
+      // Notify background script about auth state change
+      try {
+        await chrome.runtime.sendMessage({ 
+          type: 'AUTH_STATE_CHANGED', 
+          isAuthenticated: true 
+        });
+      } catch (error) {
+        // Silent failure in production
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Failed to notify background script:', error);
+        }
       }
       
       return Promise.resolve();
     } else {
+      console.error('Social registration failed:', responseData.message);
       return Promise.reject(new Error(responseData.message || 'Registration failed'));
     }
   } catch (error) {
@@ -769,6 +632,9 @@ export const verifyPhoneOTP = async (phoneNumber: string, otp: string, sessionId
       await storeToken(token);
       await storeRefreshToken(refreshToken);
       await storeUser(userData);
+      
+      // Update global auth state
+      setAuthState(userData, true);
       
       return {
         success: true,
