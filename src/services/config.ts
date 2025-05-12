@@ -1,5 +1,5 @@
-export const API_BASE_URL = 'https://api.search.com';
-export const APP_BASE_URL = 'https://search.com';
+export const API_BASE_URL = '*****';
+export const APP_BASE_URL = '****';
 // export const GOOGLE_CLIENT_ID = '****';
 // export const GOOGLE_CLIENT_ID = '****';
 export const GOOGLE_CLIENT_ID = '***';
