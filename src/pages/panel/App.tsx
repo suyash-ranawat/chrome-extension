@@ -62,52 +62,51 @@ const App: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-
   const saveChatHistoryToLocalStorage = (messages: Message[]) => {
     console.log('saveChatHistoryToLocalStorage');
     console.log(isAuthenticated);
-  if (!isAuthenticated) {
-    const formattedHistory = messages.map(msg => ({
-      message: msg.content,
-      type: msg.role
-    }));
-    console.log(formattedHistory);
-    localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
-  }
-};
+    if (!isAuthenticated) {
+      const formattedHistory = messages.map(msg => ({
+        message: msg.content,
+        type: msg.role
+      }));
+      console.log(formattedHistory);
+      localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
+    }
+  };
 
-// Add this function to load messages from localStorage:
-const loadChatHistoryFromLocalStorage = useCallback(() => {
-  console.log('loadChatHistoryFromLocalStorage');
-  console.log(isAuthenticated);
-  if (!isAuthenticated) {
-    const savedHistory = localStorage.getItem('chatHistory');
-    if (savedHistory) {
-      try {
-        const parsedHistory = JSON.parse(savedHistory);
-        const formattedMessages = parsedHistory.map((item: any) => ({
-          role: item.type as 'user' | 'assistant',
-          content: item.message
-        }));
-        setMessages(formattedMessages);
-      } catch (error) {
-        console.error('Error parsing chat history:', error);
+  // Add this function to load messages from localStorage:
+  const loadChatHistoryFromLocalStorage = useCallback(() => {
+    console.log('loadChatHistoryFromLocalStorage');
+    console.log(isAuthenticated);
+    if (!isAuthenticated) {
+      const savedHistory = localStorage.getItem('chatHistory');
+      if (savedHistory) {
+        try {
+          const parsedHistory = JSON.parse(savedHistory);
+          const formattedMessages = parsedHistory.map((item: any) => ({
+            role: item.type as 'user' | 'assistant',
+            content: item.message
+          }));
+          setMessages(formattedMessages);
+        } catch (error) {
+          console.error('Error parsing chat history:', error);
+        }
       }
     }
-  }
-}, [isAuthenticated]);
+  }, [isAuthenticated]);
 
-// Add effect to load messages on component mount:
-useEffect(() => {
-  loadChatHistoryFromLocalStorage();
-}, [loadChatHistoryFromLocalStorage]);
+  // Add effect to load messages on component mount:
+  useEffect(() => {
+    loadChatHistoryFromLocalStorage();
+  }, [loadChatHistoryFromLocalStorage]);
 
-// Add effect to save messages when they change:
-useEffect(() => {
-  if (messages.length > 0) {
-    saveChatHistoryToLocalStorage(messages);
-  }
-}, [messages, isAuthenticated]);
+  // Add effect to save messages when they change:
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveChatHistoryToLocalStorage(messages);
+    }
+  }, [messages, isAuthenticated]);
 
   const handleSubmit = async (userInput: string) => {
     if (!userInput.trim() || isMessageLoading) return;
@@ -162,7 +161,7 @@ useEffect(() => {
     }
   };
 
-  // Handle selecting a chat from history
+  // ✅ UPDATED FUNCTION
   const handleSelectChat = async (chatId: string) => {
     // Store the selected chat ID
     setCurrentChatId(chatId);
@@ -174,10 +173,17 @@ useEffect(() => {
     
     try {
       // Fetch chat messages for this chat ID
-      const { response } = await sendChatMessage('', chatId);
-      
-      // Set the messages if available
-      if (response) {
+      const { response, success, message } = await sendChatMessage('', chatId);
+
+      // Show error only if success is explicitly false
+      if (success === false) {
+        throw new Error(message || 'Failed to load chat history.');
+      }
+
+      // Handle "No chat history found" message gracefully
+      if (message === 'No chat history found') {
+        setMessages([{ role: 'assistant', content: 'No chat history found.' }]);
+      } else if (response) {
         // Parse the chat content - this depends on the API response structure
         // This is a simplified example; you may need to adapt based on your API
         try {
@@ -200,7 +206,7 @@ useEffect(() => {
       setCurrentView('chat');
     } catch (error) {
       console.error('Error loading chat:', error);
-      setMessages([{ role: 'assistant', content: 'Error loading chat history.' }]);
+      setMessages([{ role: 'assistant', content: error.message || 'Error loading chat history.' }]);
     } finally {
       setIsMessageLoading(false);
     }
@@ -238,7 +244,6 @@ useEffect(() => {
       return updatedMessages;
     });
   };
-
 
   // Switch between different views
   const changeView = (view: 'chat' | 'search' | 'write' | 'image' | 'file' | 'auth' | 'profile' | 'history') => {

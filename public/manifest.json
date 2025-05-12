@@ -3,10 +3,10 @@
   "name": "Search.com Extension",
   "version": "1.0",
   "permissions": [
-    "scripting", 
-    "tabs", 
-    "storage", 
-    "sidePanel", 
+    "scripting",
+    "tabs",
+    "storage",
+    "sidePanel",
     "identity",
     "omnibox"
   ],
@@ -41,7 +41,9 @@
         "https://www.google.com/*",
         "https://google.com/*"
       ],
-      "js": ["assets/content.js"],
+      "js": [
+        "assets/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -52,7 +54,19 @@
   },
   "oauth2": {
     "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": ["profile", "email"]
-  }
-
+    "scopes": [
+      "profile",
+      "email"
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/icon128.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }
