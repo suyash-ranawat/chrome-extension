@@ -134,6 +134,9 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const handleSignOut = async () => {
     try {
       await signOut();
+       // Clear localStorage to remove chat history
+      localStorage.removeItem('chatHistory');
+      localStorage.removeItem('currentChatId');
       setCurrentView('signin');
     } catch (error) {
       console.error('Sign out failed:', error);
@@ -315,7 +318,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   // Show phone authentication screen
   if (currentView === 'phone') {
     return (
-      <div className="flex justify-center items-center min-h-full bg-gray-50">
+      <div className="flex justify-center items-center bg-gray-50">
         <div className="w-full max-w-md">
           <PhoneAuth 
             onSuccess={() => setCurrentView('main')}
@@ -331,7 +334,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
 
   // Show authentication screens
   return (
-    <div className="flex justify-center items-center min-h-full bg-gray-50">
+    <div className="flex justify-center items-center bg-gray-50">
       <div className="w-full max-w-md">
         {currentView === 'signin' && (
           <SignIn

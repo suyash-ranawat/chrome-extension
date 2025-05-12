@@ -130,6 +130,15 @@ const Auth: React.FC<AuthProps> = ({ onAuthComplete }) => {
   const handleSignOut = async (): Promise<void> => {
     clearError();
     setComponentError(null);
+
+    // Clear chat data from localStorage
+    localStorage.removeItem('chatHistory');
+    localStorage.removeItem('currentChatId');
+    
+    // Clear component state
+    setMessages([]);
+    setCurrentChatId(undefined);
+    setShowSuggestions(true);
     
     try {
       await signOut();
@@ -345,7 +354,7 @@ const handleSubmit = async (userInput: string) => {
 
   // Render authentication forms for non-authenticated users
   return (
-    <div className="flex justify-center items-center min-h-full bg-gray-50">
+    <div className="flex justify-center items-center bg-gray-50">
       <div className="w-full max-w-md">
         {currentView === 'signin' && (
           <SignIn

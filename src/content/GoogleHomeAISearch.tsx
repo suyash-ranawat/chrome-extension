@@ -88,7 +88,6 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
     width: '28px',
     height: '28px',
     borderRadius: '50%',
-    backgroundColor: '#10A37F',
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
