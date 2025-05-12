@@ -113,23 +113,23 @@ useEffect(() => {
 
   // Add user message to UI
   const newMessages = [...messages, { role: 'user' as const, content: userInput }];
-  setMessages(prev => [...prev, { role: 'user', content: userInput }]);
+  setMessages(newMessages);  // Update the state with the new user message
   setIsMessageLoading(true);
   setShowSuggestions(false);
 
   try {
     const { chatId, response } = await sendChatMessage(userInput, currentChatId);
-    
+
     // Update chat ID if this is a new conversation
     if (chatId && !currentChatId) {
       setCurrentChatId(chatId);
       localStorage.setItem('currentChatId', chatId);
     }
 
-    // Add assistant response to UI
+    // Add assistant response to UI, using the updated newMessages array
     const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
     setMessages(updatedMessages);
-    
+
     // Save to localStorage if not authenticated
     if (!isAuthenticated) {
       saveChatHistoryToLocalStorage(updatedMessages);
@@ -138,8 +138,6 @@ useEffect(() => {
     // Clear the input field after receiving the response
     setInput('');  // This line resets the input field
 
-    // Add assistant response to UI
-    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
   } catch (error) {
     console.error('Error:', error);
     setMessages(prev => [...prev, { role: 'assistant', content: 'Error fetching response.' }]);
@@ -147,6 +145,7 @@ useEffect(() => {
     setIsMessageLoading(false);
   }
 };
+
 
 
   const handlePromptClick = (promptText: string) => {
