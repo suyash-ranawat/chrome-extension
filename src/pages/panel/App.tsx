@@ -163,7 +163,6 @@ useEffect(() => {
   };
 
   // Handle selecting a chat from history
-  // Handle selecting a chat from history
   const handleSelectChat = async (chatId: string) => {
     // Store the selected chat ID
     setCurrentChatId(chatId);
