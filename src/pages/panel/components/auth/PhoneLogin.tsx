@@ -29,7 +29,7 @@ const PhoneLogin: React.FC<PhoneLoginProps> = ({ onPhoneSignIn, onBackToSignIn }
     };
 
     return (
-        <div className="flex flex-col items-center p-6">
+        <div className="flex flex-col items-center p-6 w-full h-full">
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Welcome back</h2>
 
             {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
@@ -38,14 +38,17 @@ const PhoneLogin: React.FC<PhoneLoginProps> = ({ onPhoneSignIn, onBackToSignIn }
                 {/* Phone number input with country code */}
                 <div className="w-full mb-4">
                     <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                    <PhoneInput
-                        country="in"  // Set the default country to India
-                        value={phone}
-                        onChange={setPhone}
-                        inputClass="w-full py-2 px-3 border border-gray-300 rounded-md" // Default input class from the library
-                        placeholder="Enter your phone number"
-                        required
-                    />
+                    {/* PhoneInput Component wrapped in a div with w-full */}
+                    <div className="w-full">
+                        <PhoneInput
+                            country="in"  // Set the default country to India
+                            value={phone}
+                            onChange={setPhone}
+                            inputClass="form-phone w-full py-2 px-3 border border-gray-300 rounded-md"  // Ensure w-full for responsiveness
+                            placeholder="Enter your phone number"
+                            required
+                        />
+                    </div>
                 </div>
 
                 {/* Password input */}
@@ -62,9 +65,11 @@ const PhoneLogin: React.FC<PhoneLoginProps> = ({ onPhoneSignIn, onBackToSignIn }
                 </div>
 
                 {/* Submit button */}
-                <Button type="submit" variant="primary" fullWidth isLoading={isLoading}>
-                    Continue
-                </Button>
+                <div className="w-full">
+                    <Button type="submit" variant="primary" fullWidth isLoading={isLoading} className="w-full py-2 px-3">
+                        Continue
+                    </Button>
+                </div>
             </form>
 
             {/* Back to sign-in button */}
