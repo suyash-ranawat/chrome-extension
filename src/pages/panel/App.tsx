@@ -1,4 +1,3 @@
-// Update src/pages/panel/App.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sendChatMessage, getChatContent } from '@/services/api';
 import TopNavigation from './components/TopNavigation';
@@ -110,41 +109,44 @@ useEffect(() => {
 }, [messages, isAuthenticated]);
 
   const handleSubmit = async (userInput: string) => {
-    if (!userInput.trim() || isMessageLoading) return;
+  if (!userInput.trim() || isMessageLoading) return;
 
-    // Add user message to UI
-    const newMessages = [...messages, { role: 'user' as const, content: userInput }];
-    setMessages(prev => [...prev, { role: 'user', content: userInput }]);
-    setIsMessageLoading(true);
-    setShowSuggestions(false);
+  // Add user message to UI
+  const newMessages = [...messages, { role: 'user' as const, content: userInput }];
+  setMessages(newMessages);  // Update the state with the new user message
+  setIsMessageLoading(true);
+  setShowSuggestions(false);
 
-    try {
-      const { chatId, response } = await sendChatMessage(userInput, currentChatId);
-      
-      // Update chat ID if this is a new conversation
-      if (chatId && !currentChatId) {
-        setCurrentChatId(chatId);
-        localStorage.setItem('currentChatId', chatId);
-      }
+  try {
+    const { chatId, response } = await sendChatMessage(userInput, currentChatId);
 
-      // Add assistant response to UI
-      const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
-      setMessages(updatedMessages);
-      
-      // Save to localStorage if not authenticated
-      if (!isAuthenticated) {
-        saveChatHistoryToLocalStorage(updatedMessages);
-      }
-
-      // Add assistant response to UI
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    } catch (error) {
-      console.error('Error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Error fetching response.' }]);
-    } finally {
-      setIsMessageLoading(false);
+    // Update chat ID if this is a new conversation
+    if (chatId && !currentChatId) {
+      setCurrentChatId(chatId);
+      localStorage.setItem('currentChatId', chatId);
     }
-  };
+
+    // Add assistant response to UI, using the updated newMessages array
+    const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
+    setMessages(updatedMessages);
+
+    // Save to localStorage if not authenticated
+    if (!isAuthenticated) {
+      saveChatHistoryToLocalStorage(updatedMessages);
+    }
+
+    // Clear the input field after receiving the response
+    setInput('');  // This line resets the input field
+
+  } catch (error) {
+    console.error('Error:', error);
+    setMessages(prev => [...prev, { role: 'assistant', content: 'Error fetching response.' }]);
+  } finally {
+    setIsMessageLoading(false);
+  }
+};
+
+
 
   const handlePromptClick = (promptText: string) => {
     setInput(promptText);
@@ -174,39 +176,42 @@ useEffect(() => {
     setShowSuggestions(false); // Hide suggestions when loading a chat
     
     try {
-      console.log(`Loading chat with ID: ${chatId}`);
-      
-      // Fetch chat content using the new API
-      const chatData = await getChatContent(chatId);
-      
-      if (chatData && chatData.datalist) {
-        // Convert the API response to the Message format our chat expects
-        const messages: Message[] = [];
-        
-        chatData.datalist.forEach((item: any) => {
-          // Add user message if search exists
-          if (item.search) {
-            messages.push({
-              role: 'user',
-              content: item.search
-            });
-          }
-          
-          // Add AI response
-          if (item.response && item.response.ai_response) {
-            messages.push({
-              role: 'assistant',
-              content: item.response.ai_response
-            });
-          }
-        });
-        
-        setMessages(messages);
-      } else {
-        console.warn('No chat data found');
-        setMessages([]);
+      // Fetch chat messages for this chat ID
+      const { response, success, message } = await sendChatMessage('', chatId);
+
+      // Show error only if success is explicitly false
+      if (success === false) {
+        throw new Error(message || 'Failed to load chat history.');
       }
-      
+
+      // Dynamically handle any message from the backend
+      if (message) {
+        // If there's any message, display it dynamically
+        setMessages([{ role: 'assistant', content: message }]);
+      } else if (response) {
+        // Dynamically parse the response if it's in JSON format
+        try {
+          const parsedContent = JSON.parse(response);
+
+          // If parsedContent is an array, display it directly
+          if (Array.isArray(parsedContent)) {
+            setMessages(parsedContent);
+          } else if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
+            // If there are messages in parsedContent, display them
+            setMessages(parsedContent.messages);
+          } else {
+            // Otherwise, just show the response as a single message
+            setMessages([{ role: 'assistant', content: response }]);
+          }
+        } catch (parseError) {
+          // If parsing fails, just display the raw response as a message
+          setMessages([{ role: 'assistant', content: response }]);
+        }
+      } else {
+        // If no message or response, display a default dynamic message
+        setMessages([{ role: 'assistant', content: 'No chat history available or unexpected response format.' }]);
+      }
+
       // Switch to chat view
       setCurrentView('chat');
     } catch (error) {
