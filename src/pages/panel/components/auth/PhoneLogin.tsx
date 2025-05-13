@@ -2,30 +2,49 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import PhoneInput from 'react-phone-input-2';  // Import the PhoneInput component from the library
 import 'react-phone-input-2/lib/style.css';   // Import the default styles for the phone input
+import axios from 'axios';  // Import Axios
 
 interface PhoneLoginProps {
-    onPhoneSignIn: (phone: string, password: string) => Promise<void>;
-    onBackToSignIn: () => void;
+  onBackToSignIn: () => void;  // Callback function passed as a prop to navigate back to the sign-in page
 }
 
-const PhoneLogin: React.FC<PhoneLoginProps> = ({ onPhoneSignIn, onBackToSignIn }) => {
+const PhoneLogin: React.FC<PhoneLoginProps> = ({ onBackToSignIn }) => {
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-
+    // Define the function to handle login using phone number and password
+    const onPhoneSignIn = async (phone: string, password: string) => {
         try {
-            await onPhoneSignIn(phone, password);
-        } catch (err) {
-            setError('Failed to sign in with phone number.');
+            setIsLoading(true);
+            setError(null);
+
+            const response = await axios.post('https://api.search.com/signin', {
+                phone: phone,
+                password: password,
+            });
+
+            // Check if login was successful based on response content
+            if (response.data && response.data.success) {
+                console.log('Login successful:', response.data);
+                localStorage.setItem('token', response.data.token);
+            } else {
+                const errorMsg = response.data?.message || 'Invalid phone or password.';
+                setError(errorMsg);
+                console.error('Login failed:', errorMsg);
+            }
+        } catch (error: any) {
+            console.error('Error during login:', error);
+            setError(error.response?.data?.message || 'Failed to sign in with phone number.');
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await onPhoneSignIn(phone, password);
     };
 
     return (
@@ -38,13 +57,12 @@ const PhoneLogin: React.FC<PhoneLoginProps> = ({ onPhoneSignIn, onBackToSignIn }
                 {/* Phone number input with country code */}
                 <div className="w-full mb-4">
                     <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                    {/* PhoneInput Component wrapped in a div with w-full */}
                     <div className="w-full">
                         <PhoneInput
-                            country="in"  // Set the default country to India
+                            country="in"
                             value={phone}
                             onChange={setPhone}
-                            inputClass="form-phone w-full py-2 px-3 border border-gray-300 rounded-md"  // Ensure w-full for responsiveness
+                            inputClass="form-phone w-full py-2 px-3 border border-gray-300 rounded-md"
                             placeholder="Enter your phone number"
                             required
                         />
@@ -64,7 +82,6 @@ const PhoneLogin: React.FC<PhoneLoginProps> = ({ onPhoneSignIn, onBackToSignIn }
                     />
                 </div>
 
-                {/* Submit button */}
                 <div className="w-full">
                     <Button type="submit" variant="primary" fullWidth isLoading={isLoading} className="w-full py-2 px-3">
                         Continue
@@ -72,11 +89,10 @@ const PhoneLogin: React.FC<PhoneLoginProps> = ({ onPhoneSignIn, onBackToSignIn }
                 </div>
             </form>
 
-            {/* Back to sign-in button */}
             <div className="mt-4 text-center text-sm text-gray-600">
                 <button
                     type="button"
-                    onClick={onBackToSignIn}
+                    onClick={onBackToSignIn}  // Call the onBackToSignIn function passed from parent
                     className="font-medium text-green-600 hover:text-green-500"
                 >
                     ← Back to Sign In

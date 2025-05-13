@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import SocialLoginButtons from './SocialLoginButtons';
 import { SocialProvider } from '@/services/socialAuth';
+import PhoneAuth from './PhoneAuth';  // Import the PhoneAuth component
 
 interface SignUpProps {
   onSignUp: (username: string, email: string, password: string) => Promise<boolean>;
@@ -10,14 +11,18 @@ interface SignUpProps {
   onSocialLogin?: (provider: SocialProvider) => Promise<boolean>;
   onPhoneLogin?: () => void;
   error?: string | null;
+  onRequestOTP: (phoneNumber: string) => Promise<string | null>;
+  onVerifyOTP: (otp: string) => Promise<boolean>;
 }
 
-const SignUp: React.FC<SignUpProps> = ({ 
-  onSignUp, 
-  onSwitchToSignIn, 
+const SignUp: React.FC<SignUpProps> = ({
+  onSignUp,
+  onSwitchToSignIn,
   onSocialLogin,
   onPhoneLogin,
-  error
+  error,
+  onRequestOTP, 
+  onVerifyOTP
 }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -26,6 +31,7 @@ const SignUp: React.FC<SignUpProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showPhoneAuth, setShowPhoneAuth] = useState(false);  // Track phone auth visibility
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,9 +78,7 @@ const SignUp: React.FC<SignUpProps> = ({
 
   // Handle phone login
   const handlePhoneLoginClick = () => {
-    if (onPhoneLogin) {
-      onPhoneLogin();
-    }
+    setShowPhoneAuth(true); // Show phone auth when clicked
   };
 
   // Loading state
@@ -87,8 +91,17 @@ const SignUp: React.FC<SignUpProps> = ({
     );
   }
 
-  // The error to display - either from parent or local validation
-  const displayError = error || validationError;
+  // If phone authentication is triggered, render PhoneAuth component
+  if (showPhoneAuth) {
+    return (
+      <PhoneAuth
+        onRequestOTP={onRequestOTP}
+        onVerifyOTP={onVerifyOTP}
+        onCancel={() => setShowPhoneAuth(false)} // Hide PhoneAuth when cancel is clicked
+        error={error}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col items-center p-6">
@@ -102,9 +115,9 @@ const SignUp: React.FC<SignUpProps> = ({
         <p className="mt-1 text-sm text-gray-600">Sign up to get started with Search.com</p>
       </div>
 
-      {displayError && (
+      {validationError && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md w-full max-w-md text-sm">
-          {displayError}
+          {validationError}
         </div>
       )}
 
@@ -125,7 +138,6 @@ const SignUp: React.FC<SignUpProps> = ({
           required
           fullWidth
         />
-
         <Input
           label="Email"
           type="email"
@@ -135,7 +147,6 @@ const SignUp: React.FC<SignUpProps> = ({
           required
           fullWidth
         />
-
         <Input
           label="Password"
           type="password"
@@ -145,7 +156,6 @@ const SignUp: React.FC<SignUpProps> = ({
           required
           fullWidth
         />
-
         <Input
           label="Confirm Password"
           type="password"
@@ -155,7 +165,6 @@ const SignUp: React.FC<SignUpProps> = ({
           required
           fullWidth
         />
-
         <div className="flex items-center">
           <input
             id="terms"
@@ -177,35 +186,31 @@ const SignUp: React.FC<SignUpProps> = ({
             </a>
           </label>
         </div>
-
         <Button type="submit" variant="primary" fullWidth isLoading={isLoading}>
           Sign up
         </Button>
-
-        <div className="flex flex-col space-y-4">
+        <div className="mt-4 text-center text-sm text-gray-600">
+          Already have an account?{' '}
           <button
             type="button"
-            onClick={handlePhoneLoginClick}
-            className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            onClick={onSwitchToSignIn}
+            className="font-medium text-green-600 hover:text-green-500"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            Sign up with phone number
+            Sign in
           </button>
-
-          <div className="mt-4 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <button
-              type="button"
-              onClick={onSwitchToSignIn}
-              className="font-medium text-green-600 hover:text-green-500"
-            >
-              Sign in
-            </button>
-          </div>
         </div>
       </form>
+
+      {/* Phone SignUp Button */}
+      <div className="mt-4 text-center">
+        <button
+          type="button"
+          onClick={handlePhoneLoginClick}
+          className="font-medium text-green-600 hover:text-green-500"
+        >
+          Sign up with phone number
+        </button>
+      </div>
     </div>
   );
 };

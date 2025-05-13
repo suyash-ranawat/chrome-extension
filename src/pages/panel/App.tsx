@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sendChatMessage, getChatContent } from '@/services/api';
 import TopNavigation from './components/TopNavigation';
