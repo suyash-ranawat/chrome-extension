@@ -8,6 +8,7 @@ interface GoogleHomeAISearchProps {
   chatId: string | null;
   currentPrompt: string;
   onContinueToChat: () => void;
+  onClose?: () => void; // New prop for close button
 }
 
 const getExtensionUrl = (path: string): string => {
@@ -26,18 +27,35 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
   loading,
   chatId,
   currentPrompt,
-  onContinueToChat
+  onContinueToChat,
+  onClose
 }) => {
   const [prompt, setPrompt] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const optionsMenuRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (isExpanded && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isExpanded]);
+
+  // Handle outside click to close the options menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target as Node)) {
+        setShowOptionsMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,11 +70,43 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
     }
   };
 
+  const handleCloseClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
   const handleCopyResult = () => {
     if (analysisResult) {
       const plainText = analysisResult.replace(/<[^>]*>/g, '');
       navigator.clipboard.writeText(plainText);
     }
+  };
+
+  // Options menu handlers
+  const handleHideUntilNextVisit = () => {
+    // Store in session storage that widget should be hidden
+    sessionStorage.setItem('searchgpt_hidden', 'true');
+    if (onClose) onClose();
+  };
+
+  const handleDisableForSite = () => {
+    // Get current hostname
+    const hostname = window.location.hostname;
+    // Get existing disabled sites or initialize empty array
+    const disabledSites = JSON.parse(localStorage.getItem('searchgpt_disabled_sites') || '[]');
+    // Add current site if not already in the list
+    if (!disabledSites.includes(hostname)) {
+      disabledSites.push(hostname);
+      localStorage.setItem('searchgpt_disabled_sites', JSON.stringify(disabledSites));
+    }
+    if (onClose) onClose();
+  };
+
+  const handleDisableGlobally = () => {
+    // Set global disable flag
+    localStorage.setItem('searchgpt_disabled_globally', 'true');
+    if (onClose) onClose();
   };
 
   const containerStyle: React.CSSProperties = {
@@ -78,6 +128,7 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
   const headerStyle = {
     display: 'flex' as const,
     alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
     padding: '12px 16px',
     borderBottom: '1px solid rgba(0,0,0,0.08)',
   };
@@ -97,16 +148,46 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
     justifyContent: 'center' as const,
   };
 
-  const modelSelectorStyle = {
-    marginLeft: 'auto',
-    padding: '4px 8px',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: '8px',
-    fontSize: '12px',
-    color: '#666',
+  const controlsContainerStyle = {
     display: 'flex' as const,
     alignItems: 'center' as const,
-    gap: '4px',
+    gap: '8px',
+  };
+
+  const actionButtonStyle = {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '5px',
+    borderRadius: '50%',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    color: '#666',
+    transition: 'background-color 0.2s',
+    width: '28px',
+    height: '28px',
+  };
+
+  const optionsMenuStyle = {
+    position: 'absolute' as const,
+    top: '40px',
+    right: '10px',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+    width: '200px',
+    zIndex: 1001,
+    overflow: 'hidden',
+  };
+
+  const optionItemStyle = {
+    padding: '10px 16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    borderBottom: '1px solid #f0f0f0',
+    color: '#333',
   };
 
   const inputContainerStyle = {
@@ -222,6 +303,66 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
           <span style={{ fontWeight: 600, fontSize: '16px', color: '#111' }}>
             SearchGPT
           </span>
+        </div>
+        
+        {/* New options menu and close button */}
+        <div style={controlsContainerStyle}>
+          {/* Options menu button */}
+          <div style={{ position: 'relative' }} ref={optionsMenuRef}>
+            <button 
+              style={actionButtonStyle}
+              onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+              aria-label="Options menu"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M19 13C19.5523 13 20 12.5523 20 12C20 11.4477 19.5523 11 19 11C18.4477 11 18 11.4477 18 12C18 12.5523 18.4477 13 19 13Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M5 13C5.55228 13 6 12.5523 6 12C6 11.4477 5.55228 11 5 11C4.44772 11 4 11.4477 4 12C4 12.5523 4.44772 13 5 13Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            
+            {/* Options dropdown menu */}
+            {showOptionsMenu && (
+              <div style={optionsMenuStyle}>
+                <div 
+                  style={optionItemStyle}
+                  onClick={handleHideUntilNextVisit}
+                  onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#f5f5f5'}}
+                  onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'white'}}
+                >
+                  Hide until next visit
+                </div>
+                <div 
+                  style={optionItemStyle}
+                  onClick={handleDisableForSite}
+                  onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#f5f5f5'}}
+                  onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'white'}}
+                >
+                  Disable for this site
+                </div>
+                <div 
+                  style={{...optionItemStyle, borderBottom: 'none'}}
+                  onClick={handleDisableGlobally}
+                  onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#f5f5f5'}}
+                  onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'white'}}
+                >
+                  Disable globally
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Close button */}
+          <button 
+            style={actionButtonStyle}
+            onClick={handleCloseClick}
+            aria-label="Close panel"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
       </div>
       
