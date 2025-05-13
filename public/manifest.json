@@ -3,12 +3,11 @@
   "name": "Search.com Extension",
   "version": "1.0",
   "permissions": [
-    "scripting", 
-    "tabs", 
-    "storage", 
-    "sidePanel", 
-    "identity",
-    "omnibox"
+    "scripting",
+    "tabs",
+    "storage",
+    "sidePanel",
+    "identity"
   ],
   "host_permissions": [
     "https://search.com/*",
@@ -22,8 +21,15 @@
   "background": {
     "service_worker": "assets/background.js"
   },
-  "omnibox": {
-    "keyword": "searchgpt"
+  "chrome_settings_overrides": {
+    "search_provider": {
+      "name": "Search.com",
+      "keyword": "@search.com",
+      "search_url": "https://search.com/s?q={searchTerms}",
+      "favicon_url": "https://search.com/favicon.ico",
+      "encoding": "UTF-8",
+      "is_default": true
+    }
   },
   "action": {
     "default_icon": {
@@ -60,5 +66,4 @@
       "matches": ["https://*/*", "http://*/*"]
     }
   ]
-
 }
