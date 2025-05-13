@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import axios from 'axios';  // Import axios for making API requests
 
 interface ForgotPasswordProps {
   onResetPassword: (email: string) => Promise<void>;
@@ -14,20 +15,33 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onResetPassword, onBack
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setSuccessMessage(null);
+  e.preventDefault();
+  setIsLoading(true);
+  setError(null);
+  setSuccessMessage(null);
 
-    try {
-      await onResetPassword(email);
-      setSuccessMessage(`Please check the email address ${email} for instructions to reset your password.`);
-    } catch (err) {
-      setError('Error sending password reset link. Please try again.');
-    } finally {
-      setIsLoading(false);
+  try {
+    // Send the email to the backend to trigger password reset
+    const response = await axios.post('https://api.search.com/forgot-password', { email });
+
+    console.log('API Response:', response);
+
+    // Check if the response has a success or error message
+    if (response.data.status === false) {
+      // Display error message from the backend (email not found)
+      setError(response.data.message);
+    } else if (response.data.status === true && response.data.message) {
+      // Success case: display success message
+      setSuccessMessage(response.data.message);
     }
-  };
+  } catch (err) {
+    // Handle unexpected errors (e.g., network issues)
+    setError('Error sending password reset link. Please try again.');
+  } finally {
+    setIsLoading(false);  // Reset loading state
+  }
+};
+
 
   return (
     <div className="flex flex-col items-center p-6">
