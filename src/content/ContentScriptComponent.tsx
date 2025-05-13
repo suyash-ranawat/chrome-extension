@@ -6,6 +6,7 @@ import { GoogleHomeAISearch } from './GoogleHomeAISearch';
 export const ContentScriptComponent = () => {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
+  const [currentPrompt, setCurrentPrompt] = useState<string>('');
   const [loading, setLoading] = useState(false);
   
   const url = window.location.href;
@@ -29,7 +30,6 @@ export const ContentScriptComponent = () => {
     console.log('Search Query:', qParam);
   }, []);
 
-
   const getExtensionUrl = (path: string): string => {
     // Check if chrome.runtime is available
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
@@ -40,12 +40,55 @@ export const ContentScriptComponent = () => {
     return `/${path}`;
   };
 
+  // Add conversation to chat history in localStorage
+  const addConversationToChatHistory = (userMessage: string, aiResponse: string) => {
+    // Get existing chat history
+    let chatHistory = [];
+    try {
+      const savedHistory = localStorage.getItem('chatHistory');
+      if (savedHistory) {
+        chatHistory = JSON.parse(savedHistory);
+      }
+    } catch (error) {
+      console.error('Error parsing chat history:', error);
+      chatHistory = [];
+    }
+    
+    // Add new conversation
+    chatHistory.push(
+      { message: userMessage, type: 'user' },
+      { message: aiResponse, type: 'assistant' }
+    );
+    
+    // Save back to localStorage
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+    
+    return chatHistory;
+  };
+
+  // Handle continue to chat action
+  const handleContinueToChat = () => {
+    // Save the current conversation to chat history
+    if (currentPrompt && analysisResult) {
+      addConversationToChatHistory(currentPrompt, analysisResult);
+      
+      // Open the extension side panel
+      chrome.runtime.sendMessage({
+        type: 'OPEN_SIDE_PANEL',
+        data: { fromContentScript: true }
+      });
+    }
+  };
+
   const handleAskClick = async (customPrompt?: string) => {
     setLoading(true);
     try {
       // Use customPrompt if provided, otherwise use just the 'q' parameter value
       const prompt = customPrompt || (qParam ? qParam : '');
       if (!prompt) return;
+
+      // Store the current prompt for later use
+      setCurrentPrompt(prompt);
 
       console.log('Sending prompt to API:', prompt);
       const { chatId, response } = await inBrowerContent(prompt);
@@ -68,6 +111,8 @@ export const ContentScriptComponent = () => {
         analysisResult={analysisResult}
         loading={loading}
         chatId={chatId}
+        currentPrompt={currentPrompt}
+        onContinueToChat={handleContinueToChat}
       />
     );
   }
@@ -138,24 +183,23 @@ export const ContentScriptComponent = () => {
               dangerouslySetInnerHTML={{ __html: analysisResult }}
             />
   
-          {chatId && (
-              <div style={{ padding: '8px 16px', textAlign: 'center', borderTop: '1px solid #e0e0e0' }}>
-                <a  
-                  href={`https://search.com/chat/${chatId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-block',
-                    fontSize: '14px',
-                    color: '#10A37F',
-                    textDecoration: 'none',
-                    fontWeight: 500
-                  }}
-                >
+            <div style={{ padding: '8px 16px', textAlign: 'center', borderTop: '1px solid #e0e0e0' }}>
+              <button  
+                onClick={handleContinueToChat}
+                style={{
+                  display: 'inline-block',
+                  fontSize: '14px',
+                  color: '#10A37F',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
                   Continue in Chat
-                </a>
-              </div>
-            )}
+              </button>
+            </div>
           </>
         )}
       </div>

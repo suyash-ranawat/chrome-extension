@@ -6,6 +6,8 @@ interface GoogleHomeAISearchProps {
   analysisResult: string | null;
   loading: boolean;
   chatId: string | null;
+  currentPrompt: string;
+  onContinueToChat: () => void;
 }
 
 const getExtensionUrl = (path: string): string => {
@@ -23,6 +25,8 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
   analysisResult,
   loading,
   chatId,
+  currentPrompt,
+  onContinueToChat
 }) => {
   const [prompt, setPrompt] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -170,6 +174,9 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
     display: 'flex' as const,
     alignItems: 'center' as const,
     gap: '4px',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
   };
 
   const copyButtonStyle = {
@@ -270,12 +277,10 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
             dangerouslySetInnerHTML={{ __html: analysisResult }}
           />
           
-          {chatId && (
+          {analysisResult && (
             <div style={actionsStyle}>
-              <a
-                href={`https://search.com/chat/${chatId}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={onContinueToChat}
                 style={linkStyle}
               >
                 <span>Continue in chat</span>
@@ -283,7 +288,7 @@ export const GoogleHomeAISearch: React.FC<GoogleHomeAISearchProps> = ({
                   <path d="M7 17L17 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M7 7H17V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-              </a>
+              </button>
               <button
                 onClick={handleCopyResult}
                 style={copyButtonStyle}
