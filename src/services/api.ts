@@ -1,5 +1,6 @@
 import { API_BASE_URL, API_KEYS } from './config';
 import { getUser, isAuthenticated as checkAuth } from './auth';
+import { getEncryptedIpAddress } from '../utils/encryption';
 
 // Define return types for better type safety
 interface ChatResponse {
@@ -38,9 +39,12 @@ export async function sendChatMessage(
   
   // Add parameters from API_KEYS configuration
   formData.append('prompt', prompt);
-  formData.append('key', API_KEYS.key);
   formData.append('auth', API_KEYS.auth);
   formData.append('sub', API_KEYS.sub);
+
+  // Get the encrypted IP address instead of using the API key directly
+  const encryptedIp = await getEncryptedIpAddress();
+  formData.append('key', encryptedIp);
   
   // Only add reset parameter if it exists and has a value
   if (API_KEYS.reset) {
@@ -63,15 +67,47 @@ export async function sendChatMessage(
       body: formData.toString()
     });
 
+    // Try to parse the response as JSON, even for error responses
+    let jsonData;
+    try {
+      jsonData = await res.json();
+    } catch (parseError) {
+      // If it can't be parsed as JSON, get the text instead
+      const textResponse = await res.text();
+      console.error('API response not JSON:', textResponse);
+      throw new Error(`API response invalid format: ${textResponse}`);
+    }
+
+    // Handle specific status codes
+    if (res.status === 429) {
+      console.warn('Rate limited:', jsonData);
+      
+      // Return a formatted response for rate limiting
+      return {
+        chatId: currentChatId || '',
+        response: "Rate limit exceeded. Please login or upgrade your account."
+      };
+    }
+    
+    // For other non-OK responses
     if (!res.ok) {
-      console.error('API error:', await res.text());
+      console.error('API error:', jsonData);
+      
+      // If there's a readable error message in the response, use it
+      if (jsonData && jsonData.response) {
+        return {
+          chatId: currentChatId || '',
+          response: jsonData.response
+        };
+      }
+      
       throw new Error(`API request failed with status ${res.status}`);
     }
 
-    const data = await res.json();
+    // Normal success response
     return {
-      chatId: data.chatId || currentChatId || '',
-      response: data.response || data.content || "I'm sorry, I couldn't process that request."
+      chatId: jsonData.chatId || currentChatId || '',
+      response: jsonData.response || jsonData.content || "I'm sorry, I couldn't process that request."
     };
   } catch (error) {
     console.error('API request error:', error);
@@ -87,7 +123,6 @@ export async function inBrowerContent(prompt: string): Promise<ChatResponse> {
   
   // Add parameters from API_KEYS configuration
   formData.append('prompt', prompt);
-  formData.append('key', API_KEYS.key);
   formData.append('auth', API_KEYS.auth);
   formData.append('sub', API_KEYS.sub);
   
@@ -95,6 +130,10 @@ export async function inBrowerContent(prompt: string): Promise<ChatResponse> {
   if (API_KEYS.reset) {
     formData.append('reset', API_KEYS.reset);
   }
+
+  // Get the encrypted IP address instead of using the API key directly
+  const encryptedIp = await getEncryptedIpAddress();
+  formData.append('key', encryptedIp);
 
   // Add UID if user is authenticated
   await addUidIfAuthenticated(formData);
@@ -112,15 +151,47 @@ export async function inBrowerContent(prompt: string): Promise<ChatResponse> {
       body: formData.toString()
     });
 
+    // Try to parse the response as JSON, even for error responses
+    let jsonData;
+    try {
+      jsonData = await res.json();
+    } catch (parseError) {
+      // If it can't be parsed as JSON, get the text instead
+      const textResponse = await res.text();
+      console.error('API response not JSON:', textResponse);
+      throw new Error(`API response invalid format: ${textResponse}`);
+    }
+
+    // Handle specific status codes
+    if (res.status === 429) {
+      console.warn('Rate limited:', jsonData);
+      
+      // Return a formatted response for rate limiting
+      return {
+        chatId: '',
+        response: "Rate limit exceeded. Please login or upgrade your account."
+      };
+    }
+    
+    // For other non-OK responses
     if (!res.ok) {
-      console.error('API error:', await res.text());
+      console.error('API error:', jsonData);
+      
+      // If there's a readable error message in the response, use it
+      if (jsonData && jsonData.response) {
+        return {
+          chatId: '',
+          response: jsonData.response
+        };
+      }
+      
       throw new Error(`API request failed with status ${res.status}`);
     }
 
-    const data = await res.json();
+    // Normal success response
     return {
-      chatId: data.chatId || '',
-      response: data.response || data.content || "I'm sorry, I couldn't process that request."
+      chatId: jsonData.chatId || '',
+      response: jsonData.response || jsonData.content || "I'm sorry, I couldn't process that request."
     };
   } catch (error) {
     console.error('API request error:', error);
@@ -133,8 +204,12 @@ export async function getChatHistory(chatId: string): Promise<Message[]> {
   const url = new URL(`${API_BASE_URL}/chat/history`);
   
   url.searchParams.set('chatId', chatId);
-  url.searchParams.set('key', API_KEYS.key);
+  // url.searchParams.set('key', API_KEYS.key);
   url.searchParams.set('auth', API_KEYS.auth);
+
+  // Get the encrypted IP address instead of using the API key directly
+  const encryptedIp = await getEncryptedIpAddress();
+  url.searchParams.set('key', encryptedIp);
   
   // Add UID if user is authenticated
   await addUidIfAuthenticated(url.searchParams);
@@ -160,9 +235,13 @@ export async function getChatContent(chatId: string): Promise<any> {
   
   // Add required parameters
   url.searchParams.set('chatId', chatId);
-  url.searchParams.set('key', API_KEYS.key);
+  // url.searchParams.set('key', API_KEYS.key);
   url.searchParams.set('auth', API_KEYS.auth);
   url.searchParams.set('sub', API_KEYS.sub || '');
+
+  // Get the encrypted IP address instead of using the API key directly
+  const encryptedIp = await getEncryptedIpAddress();
+  url.searchParams.set('key', encryptedIp);
   
   // Add UID if user is authenticated
   await addUidIfAuthenticated(url.searchParams);

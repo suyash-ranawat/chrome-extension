@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import classNames from 'classnames';
 import { Message } from '../App';
@@ -17,11 +17,34 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   messagesEndRef,
   onMessageUpdate
 }) => {
+  // Use useMemo to deduplicate messages only when the messages array changes
+  const displayMessages = useMemo(() => {
+    // Create a map to detect duplicates - we'll consider a message duplicate if:
+    // 1. Same role and content
+    // 2. Adjacent in the array (back-to-back)
+    const uniqueMessages: Message[] = [];
+    
+    messages.forEach((message, index) => {
+      // Check if this message is the same as the previous one
+      const prevMessage = uniqueMessages[uniqueMessages.length - 1];
+      const isDuplicate = prevMessage && 
+                          prevMessage.role === message.role && 
+                          prevMessage.content === message.content;
+      
+      // Only add if it's not a duplicate
+      if (!isDuplicate) {
+        uniqueMessages.push(message);
+      }
+    });
+    
+    return uniqueMessages;
+  }, [messages]);
+  
   return (
     <div className="flex-1 overflow-auto p-4 space-y-4">
-      {messages.map((message, index) => (
+      {displayMessages.map((message, index) => (
         <div
-          key={index}
+          key={`message-${index}-${message.role}`}
           className={classNames(
             'flex',
             message.role === 'user' ? 'justify-end' : 'justify-start'
@@ -43,7 +66,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 />
                 <MessageActions 
                   content={message.content.replace(/<[^>]*>/g, '')} // Strip HTML tags for clean text
-                  onRewriteSuccess={(newContent) => onMessageUpdate(index, newContent)}
+                  onRewriteSuccess={(newContent) => {
+                    // Find the correct index in the original array
+                    const originalIndex = messages.findIndex(
+                      (msg, i) => i >= index && msg.role === message.role && msg.content === message.content
+                    );
+                    onMessageUpdate(originalIndex !== -1 ? originalIndex : index, newContent);
+                  }}
                 />
               </>
             ) : (

@@ -349,18 +349,22 @@ const handleMicrosoftAuth = async (): Promise<void> => {
 /**
  * Handle Apple Authentication
  */
+/**
+ * Handle Apple Authentication
+ */
 const handleAppleAuth = async (): Promise<void> => {
   return new Promise<void>((resolve, reject) => {
     const redirectURL = chrome.identity.getRedirectURL("apple");
-    const clientId = `${APPLE_SERVICE_ID}`; // Replace with your actual Apple Service ID
+    const clientId = `${APPLE_SERVICE_ID}`; // Your Apple Service ID
     console.log(redirectURL);
     
+    // Updated parameters for Apple Sign In
     const authParams = new URLSearchParams({
       'client_id': clientId,
       'redirect_uri': redirectURL,
       'response_type': 'code id_token',
       'scope': 'name email',
-      'response_mode': 'fragment'
+      'response_mode': 'form_post', // Changed from 'fragment' to 'form_post'
     });
     
     const authUrl = `https://appleid.apple.com/auth/authorize?${authParams.toString()}`;
@@ -380,17 +384,37 @@ const handleAppleAuth = async (): Promise<void> => {
         }
         
         try {
-          // Extract ID token from the redirect URL
-          const url = new URL(redirectUrl);
-          const fragmentParams = new URLSearchParams(url.hash.substring(1));
-          const idToken = fragmentParams.get('id_token');
+          // Since we're using form_post, the tokens will be sent as POST parameters
+          // The redirect URL will be used by Apple to send the POST request
+          // We need to process this differently
           
-          if (!idToken) {
-            return reject(new Error("No id_token found in Apple response"));
+          // For Chrome extensions, we may need to use a background script or event page
+          // to intercept the POST request and extract the tokens
+          
+          // This is a simplified approach that assumes you can extract the id_token from the URL
+          // In practice, you'll need a more robust solution
+          
+          // Extract code and id_token from the redirect URL
+          const url = new URL(redirectUrl);
+          const searchParams = new URLSearchParams(url.search);
+          const code = searchParams.get('code');
+          const idToken = searchParams.get('id_token');
+          
+          if (!idToken && !code) {
+            // Since form_post sends data via POST, we might not have the token in the URL
+            // You'll need a proper endpoint to receive this POST
+            return reject(new Error("Invalid response from Apple. Please ensure your redirect URL is properly set up to handle form_post."));
           }
           
-          // Parse JWT token to get user info
-          const userData = parseJwt(idToken);
+          let userData;
+          if (idToken) {
+            // If we have an ID token, parse it
+            userData = parseJwt(idToken);
+          } else {
+            // Otherwise, we need to exchange the code for tokens
+            // This requires a server endpoint
+            return reject(new Error("Code-only flow requires a server endpoint to exchange for tokens."));
+          }
           
           if (!userData) {
             return reject(new Error('Failed to parse Apple ID token'));
@@ -408,7 +432,7 @@ const handleAppleAuth = async (): Promise<void> => {
             postData.full_name = `${userData.name.firstName} ${userData.name.lastName}`;
           }
           
-          // Register the user with our backend
+          // Register the user with your backend
           await registerSocialUser(postData);
           resolve();
         } catch (error) {

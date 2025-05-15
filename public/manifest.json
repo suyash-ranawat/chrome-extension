@@ -25,7 +25,7 @@
     "search_provider": {
       "name": "Search.com",
       "keyword": "@search.com",
-      "search_url": "https://search.com/s?q={searchTerms}",
+      "search_url": "https://search.com/?terms={searchTerms}&utm_source=search-extension",
       "favicon_url": "https://search.com/favicon.ico",
       "encoding": "UTF-8",
       "is_default": true

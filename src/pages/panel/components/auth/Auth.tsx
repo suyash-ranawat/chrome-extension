@@ -242,18 +242,18 @@ const Auth: React.FC<AuthProps> = ({ onAuthComplete }) => {
   };
 
 
-  const saveChatHistoryToLocalStorage = (messages: Message[]) => {
-    console.log('saveChatHistoryToLocalStorage');
-    console.log(isAuthenticated);
-  if (!isAuthenticated) {
-    const formattedHistory = messages.map(msg => ({
-      message: msg.content,
-      type: msg.role
-    }));
-    console.log(formattedHistory);
-    localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
-  }
-};
+//   const saveChatHistoryToLocalStorage = (messages: Message[]) => {
+//     console.log('saveChatHistoryToLocalStorage');
+//     console.log(isAuthenticated);
+//   if (!isAuthenticated) {
+//     const formattedHistory = messages.map(msg => ({
+//       message: msg.content,
+//       type: msg.role
+//     }));
+//     console.log(formattedHistory);
+//     localStorage.setItem('chatHistory', JSON.stringify(formattedHistory));
+//   }
+// };
 
 // Add this function to load messages from localStorage:
 const loadChatHistoryFromLocalStorage = useCallback(() => {
@@ -282,48 +282,48 @@ useEffect(() => {
 }, [loadChatHistoryFromLocalStorage]);
 
 // Add effect to save messages when they change:
-useEffect(() => {
-  if (messages.length > 0) {
-    saveChatHistoryToLocalStorage(messages);
-  }
-}, [messages, isAuthenticated]);
+// useEffect(() => {
+//   if (messages.length > 0) {
+//     saveChatHistoryToLocalStorage(messages);
+//   }
+// }, [messages, isAuthenticated]);
 
 // Modify the handleSubmit function to save to localStorage after adding messages:
-const handleSubmit = async (userInput: string) => {
-  if (!userInput.trim() || isMessageLoading) return;
+// const handleSubmit = async (userInput: string) => {
+//   if (!userInput.trim() || isMessageLoading) return;
 
-  // Add user message to UI
-  const newMessages = [...messages, { role: 'user' as const, content: userInput }];
-  setMessages(newMessages);
-  setIsMessageLoading(true);
-  setShowSuggestions(false);
-  console.log(newMessages);
+//   // Add user message to UI
+//   const newMessages = [...messages, { role: 'user' as const, content: userInput }];
+//   setMessages(newMessages);
+//   setIsMessageLoading(true);
+//   setShowSuggestions(false);
+//   console.log(newMessages);
 
-  try {
-    const { chatId, response } = await sendChatMessage(userInput, currentChatId);
+//   try {
+//     const { chatId, response } = await sendChatMessage(userInput, currentChatId);
     
-    // Update chat ID if this is a new conversation
-    if (chatId && !currentChatId) {
-      setCurrentChatId(chatId);
-      localStorage.setItem('currentChatId', chatId);
-    }
+//     // Update chat ID if this is a new conversation
+//     if (chatId && !currentChatId) {
+//       setCurrentChatId(chatId);
+//       localStorage.setItem('currentChatId', chatId);
+//     }
 
-    // Add assistant response to UI
-    const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
-    setMessages(updatedMessages);
+//     // Add assistant response to UI
+//     const updatedMessages = [...newMessages, { role: 'assistant' as const, content: response }];
+//     setMessages(updatedMessages);
     
-    // Save to localStorage if not authenticated
-    if (!isAuthenticated) {
-      saveChatHistoryToLocalStorage(updatedMessages);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    const errorMessages = [...newMessages, { role: 'assistant' as const, content: 'Error fetching response.' }];
-    setMessages(errorMessages);
-  } finally {
-    setIsMessageLoading(false);
-  }
-};
+//     // Save to localStorage if not authenticated
+//     if (!isAuthenticated) {
+//       saveChatHistoryToLocalStorage(updatedMessages);
+//     }
+//   } catch (error) {
+//     console.error('Error:', error);
+//     const errorMessages = [...newMessages, { role: 'assistant' as const, content: 'Error fetching response.' }];
+//     setMessages(errorMessages);
+//   } finally {
+//     setIsMessageLoading(false);
+//   }
+// };
 
   // Loading state
   if (isLoading) {
